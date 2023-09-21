@@ -1,0 +1,50 @@
+{
+  "name": "optigov/eloquent-graphql",
+  "description": "This package provides automatic creation of GraphQL types and fields from Eloquent models.",
+  "keywords": ["optiGov", "laravel", "graphql", "eloquent", "orm", "api"],
+  "license": "MIT",
+  "support": {
+    "source": "https://github.com/optigov/eloquent-graphql"
+  },
+  "authors": [
+    {
+      "name": "Julius Türich",
+      "email": "info@joonlabs.com"
+    }
+  ],
+  "require": {
+    "php": "^8.0",
+    "webonyx/graphql-php": "^v15.6.3",
+    "illuminate/support": "^10.0",
+    "illuminate/database": "^10.0"
+  },
+  "require-dev": {
+    "laravel/pint": "^1.13",
+    "phpunit/phpunit": "^9.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "EloquentGraphQL\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "EloquentGraphQL\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "EloquentGraphQL\\EloquentGraphQLServiceProvider"
+      ]
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit tests"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
