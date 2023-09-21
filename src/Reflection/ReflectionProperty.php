@@ -26,7 +26,7 @@ class ReflectionProperty
     private string $kind = ReflectionProperty::KIND_DEFAULT;
 
     /**
-     * Determines wether the property has a default value.
+     * Determines whether the property has a default value.
      */
     private bool $hasDefaultValue = false;
 
@@ -34,16 +34,6 @@ class ReflectionProperty
      * The property's default value.
      */
     private mixed $defaultValue;
-
-    /**
-     * Scopes that protect the property.
-     */
-    private array $scopes = [];
-
-    /**
-     * Filters to be applied when a property is read.
-     */
-    private array $filters = [];
 
     public function isNullable(): bool
     {
@@ -79,15 +69,7 @@ class ReflectionProperty
 
     public function setType(string $type): ReflectionProperty
     {
-        if (str_starts_with($this->getType(), '?')) {
-            $this->type = "?$type";
-        } else {
-            $this->type = "$type";
-        }
-
-        if (str_ends_with($this->getType(), '[]')) {
-            $this->setIsArrayType(true);
-        }
+        $this->type = $type;
 
         return $this;
     }
@@ -122,84 +104,6 @@ class ReflectionProperty
     }
 
     /**
-     * @return ReflectionProperty
-     */
-    public function setIsArrayType(bool $isArrayType): static
-    {
-        $this->isArrayType = $isArrayType;
-
-        return $this;
-    }
-
-    /**
-     * Adds a scope that protects the property.
-     *
-     * @return $this
-     */
-    public function addScope(string|array $scopes): static
-    {
-        if (is_string($scopes)) {
-            $scopes = [$scopes];
-        }
-
-        foreach ($scopes as $scope) {
-            $this->scopes[] = $scope;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Adds read filters to be applied to the property data.
-     *
-     * @return $this
-     */
-    public function addFilter(string|array $filters): static
-    {
-        if (is_string($filters)) {
-            $filters = [$filters];
-        }
-
-        foreach ($filters as $filter) {
-            $this->filters[] = $filter;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Returns all scopes for the property.
-     */
-    public function getScopes(): array
-    {
-        return $this->scopes;
-    }
-
-    /**
-     * Returns all read filters for the property.
-     */
-    public function getFilters(): array
-    {
-        return $this->filters;
-    }
-
-    /**
-     * Returns if the property has read-filters.
-     */
-    public function hasFilters(): bool
-    {
-        return empty($this->getFilters());
-    }
-
-    /**
-     * Returns whether the property is protected by scopes.
-     */
-    public function protectedByScopes(): bool
-    {
-        return ! empty($this->scopes);
-    }
-
-    /**
      * Sets the property kind.
      */
     public function setKind(string $kind): ReflectionProperty
@@ -218,7 +122,7 @@ class ReflectionProperty
     }
 
     /**
-     * Returns wether the property is writable.
+     * Returns whether the property is writable.
      */
     public function isWritable(): bool
     {
@@ -229,7 +133,7 @@ class ReflectionProperty
     }
 
     /**
-     * Returns wether the property is readable.
+     * Returns whether the property is readable.
      */
     public function isReadable(): bool
     {
