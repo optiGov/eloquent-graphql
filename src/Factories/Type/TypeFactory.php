@@ -353,7 +353,7 @@ class TypeFactory
         $seenDocProperties = new Collection();
 
         $properties
-            ->filter(fn (ReflectionProperty $property) => ! $forInputType || $property->getName() !== 'id')
+            ->when($forInputType, fn (Collection $properties) => $properties->filter(fn (ReflectionProperty $property) => $property->getName() !== 'id'))
             ->each(function (ReflectionProperty $property) use ($fields, $seenDocProperties, $forInputType) {
 
                 // check if property is read or write only via checking existence in $this->docProperties
@@ -384,7 +384,7 @@ class TypeFactory
             });
 
         $this->docProperties
-            ->filter(fn (ReflectionProperty $property) => ! $forInputType || $property->getName() !== 'id')
+            ->when($forInputType, fn (Collection $properties) => $properties->filter(fn (ReflectionProperty $property) => $property->getName() !== 'id'))
             ->each(function (ReflectionProperty $property, string $name) use ($fields, $seenDocProperties, $forInputType) {
                 $inSeenDocProperties = $seenDocProperties->contains($name);
                 if (! $inSeenDocProperties) {
@@ -431,7 +431,7 @@ class TypeFactory
                     }
 
                     // get the property
-                    return $parent->{$propertyName};
+                    return $parent->{$property->getName()};
                 }
 
                 return null;
