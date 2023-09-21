@@ -12,7 +12,7 @@ class EloquentGraphQLServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton('EloquentGraphQLService', fn () => new EloquentGraphQLService());
+        $this->app->singleton(EloquentGraphQLService::class, fn () => new EloquentGraphQLService());
     }
 
     /**
