@@ -22,7 +22,8 @@ class FieldFactoryDelete extends FieldFactory
     {
         return function ($_, $args) {
             // TODO: protect field with policy
-            return call_user_func("{$this->model}::delete", $args['id']);
+            $model = call_user_func("{$this->model}::find", $args['id']);
+            return $model->delete();
         };
     }
 
