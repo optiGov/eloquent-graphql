@@ -285,7 +285,7 @@ class TypeFactory
             ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
-                    'type' => Type::nonNull(Type::listOf(Type::nonNull(Type::int()))),
+                    'type' => Type::listOf(Type::nonNull(Type::int())),
                 ]);
             });
 
