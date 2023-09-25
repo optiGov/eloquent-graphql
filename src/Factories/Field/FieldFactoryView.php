@@ -27,9 +27,14 @@ class FieldFactoryView extends FieldFactory
         return function ($_, array $args) {
             $entry = call_user_func("{$this->model}::find", $args['id']);
 
+            // return null if entry does not exist
+            if (!$entry) {
+                return null;
+            }
+
             // authorize
             if (!$this->service->security()->check("view", $this->model, [$entry])) {
-                abort(403);
+                throw new EloquentGraphQLException("You are not authorized to view this model.");
             }
 
             return $entry;

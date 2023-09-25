@@ -33,9 +33,14 @@ class FieldFactoryUpdate extends FieldFactory
             // get entry
             $entry = call_user_func("{$this->model}::find", $args['id']);
 
+            // return false if entry does not exist
+            if (!$entry) {
+                return false;
+            }
+
             // authorize
             if (!$this->service->security()->check("update", $this->model, [$entry])) {
-                abort(403);
+                throw new EloquentGraphQLException("You are not authorized to update this model.");
             }
 
             // store ids to other relations

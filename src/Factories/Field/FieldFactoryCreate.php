@@ -34,7 +34,7 @@ class FieldFactoryCreate extends FieldFactory
         return function ($parent, $args) use ($hasMany, $hasOne) {
             // authorize
             if (!$this->service->security()->check("create", $this->model, [$args[$this->pureName]])) {
-                abort(403);
+                throw new EloquentGraphQLException("You are not authorized to create this model.");
             }
 
             // build blueprint model

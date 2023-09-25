@@ -33,7 +33,7 @@ class FieldFactoryAll extends FieldFactory
         return function () {
             // authorize
             if (!$this->service->security()->check("viewAny", $this->model)) {
-                abort(403);
+                throw new EloquentGraphQLException("You are not authorized to view any of these models.");
             }
 
             return call_user_func("{$this->model}::all");

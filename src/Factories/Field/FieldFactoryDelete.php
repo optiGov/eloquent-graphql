@@ -3,6 +3,7 @@
 namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
+use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use GraphQL\Type\Definition\Type;
 
 class FieldFactoryDelete extends FieldFactory
@@ -23,9 +24,14 @@ class FieldFactoryDelete extends FieldFactory
         return function ($_, $args) {
             $model = call_user_func("{$this->model}::find", $args['id']);
 
+            // return false if model does not exist
+            if (!$model) {
+                return false;
+            }
+
             // authorize
             if (!$this->service->security()->check("delete", $this->model, [$model])) {
-                abort(403);
+                throw new EloquentGraphQLException("You are not authorized to delete this model.");
             }
 
             return $model->delete();
