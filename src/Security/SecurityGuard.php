@@ -19,6 +19,6 @@ class SecurityGuard
 
         return $gate
             ->forUser(auth()->guard('api')->user())
-            ->check($ability, Arr::collapse([$model], $arguments));
+            ->check($ability, array_merge([$model], $arguments));
     }
 }
