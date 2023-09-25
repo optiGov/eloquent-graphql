@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -34,13 +35,13 @@ class FieldFactoryUpdate extends FieldFactory
             $entry = call_user_func("{$this->model}::find", $args['id']);
 
             // return false if entry does not exist
-            if (!$entry) {
+            if (! $entry) {
                 return false;
             }
 
             // authorize
-            if (!$this->service->security()->check("update", $this->model, [$entry])) {
-                throw new EloquentGraphQLException("You are not authorized to update this model.");
+            if (! $this->service->security()->check('update', $this->model, [$entry])) {
+                throw new GraphQLError('You are not authorized to update this model.');
             }
 
             // store ids to other relations

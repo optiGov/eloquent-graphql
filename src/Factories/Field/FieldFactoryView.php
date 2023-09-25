@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use ReflectionException;
 
@@ -28,13 +29,13 @@ class FieldFactoryView extends FieldFactory
             $entry = call_user_func("{$this->model}::find", $args['id']);
 
             // return null if entry does not exist
-            if (!$entry) {
+            if (! $entry) {
                 return null;
             }
 
             // authorize
-            if (!$this->service->security()->check("view", $this->model, [$entry])) {
-                throw new EloquentGraphQLException("You are not authorized to view this model.");
+            if (! $this->service->security()->check('view', $this->model, [$entry])) {
+                throw new GraphQLError('You are not authorized to view this model.');
             }
 
             return $entry;

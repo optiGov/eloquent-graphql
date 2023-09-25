@@ -7,7 +7,6 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 
 class SecurityGuard
 {
-
     /**
      * Checks if the user is authorized to perform the given ability on the given model.
      *

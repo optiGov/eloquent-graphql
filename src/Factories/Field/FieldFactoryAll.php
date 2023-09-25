@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use ReflectionException;
 
@@ -32,8 +33,8 @@ class FieldFactoryAll extends FieldFactory
     {
         return function () {
             // authorize
-            if (!$this->service->security()->check("viewAny", $this->model)) {
-                throw new EloquentGraphQLException("You are not authorized to view any of these models.");
+            if (! $this->service->security()->check('viewAny', $this->model)) {
+                throw new GraphQLError('You are not authorized to view any of these models.');
             }
 
             return call_user_func("{$this->model}::all");

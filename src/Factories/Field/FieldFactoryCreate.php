@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,8 +34,8 @@ class FieldFactoryCreate extends FieldFactory
 
         return function ($parent, $args) use ($hasMany, $hasOne) {
             // authorize
-            if (!$this->service->security()->check("create", $this->model, [$args[$this->pureName]])) {
-                throw new EloquentGraphQLException("You are not authorized to create this model.");
+            if (! $this->service->security()->check('create', $this->model, [$args[$this->pureName]])) {
+                throw new GraphQLError('You are not authorized to create this model.');
             }
 
             // build blueprint model
