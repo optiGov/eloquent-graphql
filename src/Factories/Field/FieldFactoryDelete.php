@@ -21,8 +21,13 @@ class FieldFactoryDelete extends FieldFactory
     protected function buildResolve(): Closure
     {
         return function ($_, $args) {
-            // TODO: protect field with policy
             $model = call_user_func("{$this->model}::find", $args['id']);
+
+            // authorize
+            if (!$this->service->security()->check("delete", $this->model, [$model])) {
+                abort(403);
+            }
+
             return $model->delete();
         };
     }

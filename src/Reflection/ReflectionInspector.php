@@ -60,12 +60,12 @@ class ReflectionInspector
     private static function fullQualifyProperties(Collection $properties, string $namespace): Collection
     {
         $properties
-            ->filter(fn($property) => !$property->isPrimitiveType())
-            ->filter(fn($property) => !str_contains($property->getType(), '\\'))
+            ->filter(fn ($property) => ! $property->isPrimitiveType())
+            ->filter(fn ($property) => ! str_contains($property->getType(), '\\'))
             ->each(function (ReflectionProperty $property) use ($namespace) {
                 $prefix = $property->isNullable() ? '?' : '';
                 $postfix = $property->isArrayType() ? '[]' : '';
-                $property->setType($prefix . $namespace . '\\' . $property->getType() . $postfix);
+                $property->setType($prefix.$namespace.'\\'.$property->getType().$postfix);
             });
 
         return $properties;
@@ -86,7 +86,7 @@ class ReflectionInspector
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
-            if (!empty($matches[0])) {
+            if (! empty($matches[0])) {
                 $kind = match ($matches[1][0]) {
                     '-read' => ReflectionProperty::KIND_READ,
                     '-write' => ReflectionProperty::KIND_WRITE,

@@ -8,6 +8,7 @@ use EloquentGraphQL\GraphQL\RootQuery;
 use EloquentGraphQL\Language\Vocabulary;
 use EloquentGraphQL\Language\VocabularyEnglish;
 use EloquentGraphQL\Reflection\ReflectionInspector;
+use EloquentGraphQL\Security\SecurityGuard;
 use Illuminate\Support\Collection;
 use ReflectionException;
 
@@ -17,10 +18,13 @@ class EloquentGraphQLService
 
     protected Collection $typeFactories;
 
+    private SecurityGuard $securityGuard;
+
     public function __construct()
     {
         $this->vocab = new VocabularyEnglish();
         $this->typeFactories = new Collection();
+        $this->securityGuard = new SecurityGuard();
     }
 
     public function setVocab(Vocabulary $vocab): EloquentGraphQLService
@@ -62,5 +66,10 @@ class EloquentGraphQLService
         $this->typeFactories->put($model, $typeFactory);
 
         return $typeFactory;
+    }
+
+    public function security(): SecurityGuard
+    {
+        return $this->securityGuard;
     }
 }

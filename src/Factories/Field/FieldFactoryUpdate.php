@@ -30,7 +30,13 @@ class FieldFactoryUpdate extends FieldFactory
         $hasMany = $this->service->typeFactory($this->model)->getHasMany();
 
         return function ($_, $args) use ($hasMany, $hasOne) {
-            // TODO: protect field with policy
+            // get entry
+            $entry = call_user_func("{$this->model}::find", $args['id']);
+
+            // authorize
+            if (!$this->service->security()->check("update", $this->model, [$entry])) {
+                abort(403);
+            }
 
             // store ids to other relations
             $relationsToAddMany = [];
@@ -47,9 +53,6 @@ class FieldFactoryUpdate extends FieldFactory
                     unset($args[$this->pureName][$field]);
                 }
             }
-
-            // get entry
-            $entry = call_user_func("{$this->model}::find", $args['id']);
 
             // update properties
             foreach ($args[$this->pureName] as $property => $value) {

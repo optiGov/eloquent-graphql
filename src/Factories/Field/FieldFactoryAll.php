@@ -31,7 +31,11 @@ class FieldFactoryAll extends FieldFactory
     protected function buildResolve(): Closure
     {
         return function () {
-            // TODO: protect field with policy
+            // authorize
+            if (!$this->service->security()->check("viewAny", $this->model)) {
+                abort(403);
+            }
+
             return call_user_func("{$this->model}::all");
         };
     }

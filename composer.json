@@ -15,8 +15,7 @@
   "require": {
     "php": "^8.0",
     "webonyx/graphql-php": "^v15.6.3",
-    "illuminate/support": "^10.0",
-    "illuminate/database": "^10.0"
+    "laravel/framework": "^10.0"
   },
   "require-dev": {
     "laravel/pint": "^1.13",

@@ -25,8 +25,14 @@ class FieldFactoryView extends FieldFactory
     protected function buildResolve(): Closure
     {
         return function ($_, array $args) {
-            // TODO: protect field with policy
-            return call_user_func("{$this->model}::find", $args['id']);
+            $entry = call_user_func("{$this->model}::find", $args['id']);
+
+            // authorize
+            if (!$this->service->security()->check("view", $this->model, [$entry])) {
+                abort(403);
+            }
+
+            return $entry;
         };
     }
 

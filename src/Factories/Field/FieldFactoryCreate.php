@@ -32,7 +32,10 @@ class FieldFactoryCreate extends FieldFactory
         $hasMany = $this->service->typeFactory($this->model)->getHasMany();
 
         return function ($parent, $args) use ($hasMany, $hasOne) {
-            // TODO: protect field with policy
+            // authorize
+            if (!$this->service->security()->check("create", $this->model, [$args[$this->pureName]])) {
+                abort(403);
+            }
 
             // build blueprint model
             $entry = new $this->model();
