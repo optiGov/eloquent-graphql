@@ -3,6 +3,7 @@
 namespace EloquentGraphQL\Factories\Type;
 
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use EloquentGraphQL\Reflection\ReflectionProperty;
 use EloquentGraphQL\Services\EloquentGraphQLService;
@@ -308,7 +309,11 @@ class TypeFactory
                 $fields->put($fieldName, [
                     'type' => $property->isNullable() ? $type : Type::nonNull($type),
                     'resolve' => function ($parent) use ($fieldName) {
-                        // TODO: protect field with policy
+                        // authorize
+                        if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
+                            throw new GraphQLError('You are not authorized to view this property.');
+                        }
+                        
                         return $parent->{$fieldName};
                     },
                 ]);
@@ -333,7 +338,11 @@ class TypeFactory
                 $fields->put($fieldName, [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull($type))),
                     'resolve' => function ($parent) use ($fieldName) {
-                        // TODO: protect field with policy
+                        // authorize
+                        if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
+                            throw new GraphQLError('You are not authorized to view this property.');
+                        }
+
                         return $parent->{$fieldName};
                     },
                 ]);
@@ -415,7 +424,10 @@ class TypeFactory
         return [
             'type' => $this->buildTypeFromProperty($property),
             'resolve' => function ($parent) use ($property) {
-                // TODO: protect field with policy
+                // authorize
+                if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
+                    throw new GraphQLError('You are not authorized to view this property.');
+                }
 
                 // if $source is an iterable (e.g. array), get value by key (field name)
                 if (is_iterable($parent)) {
