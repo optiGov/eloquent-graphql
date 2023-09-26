@@ -45,5 +45,5 @@ interface EloquentGraphQLPolicyContract
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(Authenticatable $account, Model $model): bool;
+    public function forceDelete(Authenticatable $user, Model $model): bool;
 }
