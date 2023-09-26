@@ -313,7 +313,7 @@ class TypeFactory
                         if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
                             throw new GraphQLError('You are not authorized to view this property.');
                         }
-                        
+
                         return $parent->{$fieldName};
                     },
                 ]);
