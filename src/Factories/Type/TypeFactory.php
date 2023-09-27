@@ -337,7 +337,7 @@ class TypeFactory
                 $type = $this->service->typeFactory($property->getType())->build();
                 $fields->put($fieldName, [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull($type))),
-                    'resolve' => function ($parent) use ($fieldName) {
+                    'resolve' => function ($parent) use ($fieldName, $property) {
                         // authorize
                         if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
                             throw new GraphQLError('You are not authorized to view this property.');
