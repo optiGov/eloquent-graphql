@@ -32,12 +32,16 @@ class FieldFactoryAll extends FieldFactory
     protected function buildResolve(): Closure
     {
         return function () {
-            // authorize
-            if (! $this->service->security()->check('viewAny', $this->model)) {
-                throw new GraphQLError('You are not authorized to view any of these models.');
+            $entries = call_user_func("{$this->model}::all");
+
+            // authorize entries
+            foreach ($entries as $entry) {
+                if (! $this->service->security()->check('view', $this->model, [$entry])) {
+                    throw new GraphQLError('You are not authorized to view this model.');
+                }
             }
 
-            return call_user_func("{$this->model}::all");
+            return $entries;
         };
     }
 
