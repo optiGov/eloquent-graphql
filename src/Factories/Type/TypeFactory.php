@@ -308,13 +308,20 @@ class TypeFactory
                 $type = $this->service->typeFactory($property->getType())->build();
                 $fields->put($fieldName, [
                     'type' => $property->isNullable() ? $type : Type::nonNull($type),
-                    'resolve' => function ($parent) use ($fieldName) {
-                        // authorize
+                    'resolve' => function ($parent) use ($fieldName, $property) {
+                        // authorize property
                         if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
                             throw new GraphQLError('You are not authorized to view this property.');
                         }
 
-                        return $parent->{$fieldName};
+                        $entry = $parent->{$fieldName};
+
+                        // authorize entry
+                        if (! $this->service->security()->check('view', $property->getType(), [$entry])) {
+                            throw new GraphQLError('You are not authorized to view this model.');
+                        }
+
+                        return $entry;
                     },
                 ]);
             });
@@ -343,7 +350,16 @@ class TypeFactory
                             throw new GraphQLError('You are not authorized to view this property.');
                         }
 
-                        return $parent->{$fieldName};
+                        $entries = $parent->{$fieldName};
+
+                        // authorize entries
+                        foreach ($entries as $entry) {
+                            if (! $this->service->security()->check('view', $property->getType(), [$entry])) {
+                                throw new GraphQLError('You are not authorized to view this model.');
+                            }
+                        }
+
+                        return $entries;
                     },
                 ]);
             });
