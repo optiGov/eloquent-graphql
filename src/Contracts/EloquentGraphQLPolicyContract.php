@@ -10,7 +10,7 @@ interface EloquentGraphQLPolicyContract
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(Authenticatable $user): bool;
+    public function viewAny(?Authenticatable $user): bool;
 
     /**
      * Determine whether the user can view the model.
