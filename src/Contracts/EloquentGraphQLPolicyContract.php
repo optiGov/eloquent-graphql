@@ -8,11 +8,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 interface EloquentGraphQLPolicyContract
 {
     /**
-     * Determine whether the user can view any models.
-     */
-    public function viewAny(?Authenticatable $user): bool;
-
-    /**
      * Determine whether the user can view the model.
      */
     public function view(?Authenticatable $user, Model $model): bool;
@@ -36,14 +31,4 @@ interface EloquentGraphQLPolicyContract
      * Determine whether the user can delete the model.
      */
     public function delete(Authenticatable $user, Model $model): bool;
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(Authenticatable $user, Model $model): bool;
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(Authenticatable $user, Model $model): bool;
 }
