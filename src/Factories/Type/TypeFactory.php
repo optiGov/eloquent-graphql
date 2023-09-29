@@ -352,7 +352,7 @@ class TypeFactory
                         }
 
                         // check if user can view any entry
-                        if (! $this->service->security()->check('viewAny', $this->model)) {
+                        if (! $this->service->security()->check('viewAny', $property->getType())) {
                             throw new GraphQLError('You are not authorized to view any of these models.');
                         }
 
