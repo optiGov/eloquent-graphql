@@ -317,6 +317,11 @@ class TypeFactory
                         // get entry
                         $entry = $parent->{$fieldName};
 
+                        // return null if entry does not exist
+                        if (! $entry) {
+                            return null;
+                        }
+
                         // authorize entry
                         if (! $this->service->security()->check('view', $property->getType(), [$entry])) {
                             throw new GraphQLError('You are not authorized to view this model.');
