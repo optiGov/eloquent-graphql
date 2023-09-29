@@ -8,6 +8,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 interface EloquentGraphQLPolicyContract
 {
     /**
+     * Determine whether the user can view any of the models.
+     */
+    public function viewAny(?Authenticatable $user): bool;
+
+    /**
      * Determine whether the user can view the model.
      */
     public function view(?Authenticatable $user, Model $model): bool;

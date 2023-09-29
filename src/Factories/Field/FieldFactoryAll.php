@@ -34,14 +34,13 @@ class FieldFactoryAll extends FieldFactory
         return function () {
             $entries = call_user_func("{$this->model}::all");
 
-            // authorize entries
-            foreach ($entries as $entry) {
-                if (! $this->service->security()->check('view', $this->model, [$entry])) {
-                    throw new GraphQLError('You are not authorized to view this model.');
-                }
+            // check if user can view any entry
+            if (! $this->service->security()->check('viewAny', $this->model)) {
+                throw new GraphQLError('You are not authorized to view any of these models.');
             }
 
-            return $entries;
+            // filter entries
+            return $entries->filter(fn ($entry) => $this->service->security()->check('view', $this->model, [$entry]));
         };
     }
 

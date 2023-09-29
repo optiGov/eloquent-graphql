@@ -314,6 +314,7 @@ class TypeFactory
                             throw new GraphQLError('You are not authorized to view this property.');
                         }
 
+                        // get entry
                         $entry = $parent->{$fieldName};
 
                         // authorize entry
@@ -350,16 +351,22 @@ class TypeFactory
                             throw new GraphQLError('You are not authorized to view this property.');
                         }
 
-                        $entries = $parent->{$fieldName};
-
-                        // authorize entries
-                        foreach ($entries as $entry) {
-                            if (! $this->service->security()->check('view', $property->getType(), [$entry])) {
-                                throw new GraphQLError('You are not authorized to view this model.');
-                            }
+                        // check if user can view any entry
+                        if (! $this->service->security()->check('viewAny', $this->model)) {
+                            throw new GraphQLError('You are not authorized to view any of these models.');
                         }
 
-                        return $entries;
+                        // get entries
+                        $entries = $parent->{$fieldName};
+
+                        // filter entries
+                        if ($entries instanceof Collection) {
+                            return $entries->filter(fn ($entry) => $this->service->security()->check('view', $property->getType(), [$entry]));
+                        } elseif (is_array($entries)) {
+                            return array_filter($entries, fn ($entry) => $this->service->security()->check('view', $property->getType(), [$entry]));
+                        } else {
+                            throw new EloquentGraphQLException('The hasMany property '.$property->getName().' is neither a Collection nor an array.');
+                        }
                     },
                 ]);
             });
