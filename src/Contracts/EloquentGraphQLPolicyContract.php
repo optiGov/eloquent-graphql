@@ -30,7 +30,7 @@ interface EloquentGraphQLPolicyContract
     /**
      * Determine whether the user can update the model.
      */
-    public function update(Authenticatable $user, Model $model): bool;
+    public function update(Authenticatable $user, Model $model, array $data): bool;
 
     /**
      * Determine whether the user can delete the model.

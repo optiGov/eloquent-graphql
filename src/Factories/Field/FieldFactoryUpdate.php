@@ -40,7 +40,7 @@ class FieldFactoryUpdate extends FieldFactory
             }
 
             // authorize
-            if (! $this->service->security()->check('update', $this->model, [$entry])) {
+            if (! $this->service->security()->check('update', $this->model, [$entry, $args[$this->pureName]])) {
                 throw new GraphQLError('You are not authorized to update this model.');
             }
 
