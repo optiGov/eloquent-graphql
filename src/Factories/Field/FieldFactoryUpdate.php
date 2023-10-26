@@ -3,6 +3,8 @@
 namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
+use EloquentGraphQL\Events\UpdatedModelWithGraphQL;
+use EloquentGraphQL\Events\UpdatingModelWithGraphQL;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
@@ -43,6 +45,8 @@ class FieldFactoryUpdate extends FieldFactory
             if (! $this->service->security()->check('update', $this->model, [$entry, $args[$this->pureName]])) {
                 throw new GraphQLError('You are not authorized to update this model.');
             }
+
+            UpdatingModelWithGraphQL::dispatch($entry);
 
             // store ids to other relations
             $relationsToAddMany = [];
@@ -121,7 +125,13 @@ class FieldFactoryUpdate extends FieldFactory
                 }
             }
 
-            return $entry->update();
+            $success = $entry->update();
+
+            if ($success) {
+                UpdatedModelWithGraphQL::dispatch($entry);
+            }
+
+            return $success;
         };
     }
 

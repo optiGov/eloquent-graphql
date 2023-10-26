@@ -3,6 +3,8 @@
 namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
+use EloquentGraphQL\Events\DeletedModelWithGraphQL;
+use EloquentGraphQL\Events\DeletingModelWithGraphQL;
 use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 
@@ -34,7 +36,15 @@ class FieldFactoryDelete extends FieldFactory
                 throw new GraphQLError('You are not authorized to delete this model.');
             }
 
-            return $model->delete();
+            DeletingModelWithGraphQL::dispatch($model);
+
+            $success = $model->delete();
+
+            if ($success) {
+                DeletedModelWithGraphQL::dispatch($model);
+            }
+
+            return $success;
         };
     }
 
