@@ -3,8 +3,8 @@
 namespace EloquentGraphQL\Factories\Field;
 
 use Closure;
-use EloquentGraphQL\Events\CreatedModelWithGraphQL;
-use EloquentGraphQL\Events\CreatingModelWithGraphQL;
+use EloquentGraphQL\Events\GraphQLCreatedModel;
+use EloquentGraphQL\Events\GraphQLCreatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
@@ -67,12 +67,12 @@ class FieldFactoryCreate extends FieldFactory
                 }
             }
 
-            CreatingModelWithGraphQL::dispatch($entry);
+            GraphQLCreatingModel::dispatch($entry);
 
             // create the actual entry
             $entry = $entry->create($args[$this->pureName]);
 
-            CreatedModelWithGraphQL::dispatch($entry);
+            GraphQLCreatedModel::dispatch($entry);
 
             // add relations
             foreach ($relationsToAddMany as $argument => $ids) {

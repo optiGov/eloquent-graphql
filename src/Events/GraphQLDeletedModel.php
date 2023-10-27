@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class CreatingModelWithGraphQL
+class GraphQLDeletedModel
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
