@@ -67,10 +67,13 @@ class FieldFactoryCreate extends FieldFactory
                 }
             }
 
+            // set values
+            $entry->fill($args[$this->pureName]);
+
             GraphQLCreatingModel::dispatch($entry);
 
             // create the actual entry
-            $entry = $entry->create($args[$this->pureName]);
+            $entry->save();
 
             // add relations
             foreach ($relationsToAddMany as $argument => $ids) {
