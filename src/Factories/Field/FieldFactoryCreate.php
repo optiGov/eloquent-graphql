@@ -72,8 +72,6 @@ class FieldFactoryCreate extends FieldFactory
             // create the actual entry
             $entry = $entry->create($args[$this->pureName]);
 
-            GraphQLCreatedModel::dispatch($entry);
-
             // add relations
             foreach ($relationsToAddMany as $argument => $ids) {
                 if ($ids === null) {
@@ -89,6 +87,8 @@ class FieldFactoryCreate extends FieldFactory
                     }
                 }
             }
+
+            GraphQLCreatedModel::dispatch($entry);
 
             return $entry;
         };
