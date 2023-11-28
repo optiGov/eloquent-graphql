@@ -35,6 +35,16 @@ class ReflectionProperty
      */
     private mixed $defaultValue;
 
+    /**
+     * Determines whether the property has filters.
+     */
+    private bool $hasFilters = false;
+
+    /**
+     * Determines whether the property has pagination.
+     */
+    private bool $hasPagination = false;
+
     public function isNullable(): bool
     {
         return str_starts_with($this->type, '?');
@@ -141,5 +151,41 @@ class ReflectionProperty
             ReflectionProperty::KIND_WRITE => false,
             default => true
         };
+    }
+
+    /**
+     * Returns whether the property has filters.
+     */
+    public function hasFilters(): bool
+    {
+        return $this->hasFilters;
+    }
+
+    /**
+     * Sets whether the property has filters.
+     */
+    public function setHasFilters(bool $hasFilters): ReflectionProperty
+    {
+        $this->hasFilters = $hasFilters;
+
+        return $this;
+    }
+
+    /**
+     * Returns whether the property has pagination.
+     */
+    public function hasPagination(): bool
+    {
+        return $this->hasPagination;
+    }
+
+    /**
+     * Sets whether the property has pagination.
+     */
+    public function setHasPagination(bool $hasPagination): ReflectionProperty
+    {
+        $this->hasPagination = $hasPagination;
+
+        return $this;
     }
 }
