@@ -3,7 +3,9 @@
 namespace EloquentGraphQL\Factories\Type;
 
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
-use EloquentGraphQL\Exceptions\GraphQLError;
+use EloquentGraphQL\Factories\Type\Field\FieldFactoryHasMany;
+use EloquentGraphQL\Factories\Type\Field\FieldFactoryHasOne;
+use EloquentGraphQL\Factories\Type\Field\FieldFactoryScalar;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use EloquentGraphQL\Reflection\ReflectionProperty;
 use EloquentGraphQL\Services\EloquentGraphQLService;
@@ -305,31 +307,14 @@ class TypeFactory
         $this->hasOne
             ->filter(fn (ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
-                $type = $this->service->typeFactory($property->getType())->build();
-                $fields->put($fieldName, [
-                    'type' => $property->isNullable() ? $type : Type::nonNull($type),
-                    'resolve' => function ($parent) use ($fieldName, $property) {
-                        // authorize property
-                        if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
-                            throw new GraphQLError('You are not authorized to view this property.');
-                        }
-
-                        // get entry
-                        $entry = $parent->{$fieldName};
-
-                        // return null if entry does not exist
-                        if (! $entry) {
-                            return null;
-                        }
-
-                        // authorize entry
-                        if (! $this->service->security()->check('view', $property->getType(), [$entry])) {
-                            throw new GraphQLError('You are not authorized to view this model.');
-                        }
-
-                        return $entry;
-                    },
-                ]);
+                $fields->put(
+                    $fieldName,
+                    (new FieldFactoryHasOne($this->service))
+                        ->setFieldName($fieldName)
+                        ->setProperty($property)
+                        ->setModel($this->model)
+                        ->build()
+                );
             });
 
         return $fields;
@@ -347,33 +332,14 @@ class TypeFactory
         $this->hasMany
             ->filter(fn (ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
-                $type = $this->service->typeFactory($property->getType())->build();
-                $fields->put($fieldName, [
-                    'type' => Type::nonNull(Type::listOf(Type::nonNull($type))),
-                    'resolve' => function ($parent) use ($fieldName, $property) {
-                        // authorize
-                        if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
-                            throw new GraphQLError('You are not authorized to view this property.');
-                        }
-
-                        // check if user can view any entry
-                        if (! $this->service->security()->check('viewAny', $property->getType())) {
-                            throw new GraphQLError('You are not authorized to view any of these models.');
-                        }
-
-                        // get entries
-                        $entries = $parent->{$fieldName};
-
-                        // filter entries
-                        if ($entries instanceof Collection) {
-                            return $entries->filter(fn ($entry) => $this->service->security()->check('view', $property->getType(), [$entry]));
-                        } elseif (is_array($entries)) {
-                            return array_filter($entries, fn ($entry) => $this->service->security()->check('view', $property->getType(), [$entry]));
-                        } else {
-                            throw new EloquentGraphQLException('The hasMany property '.$property->getName().' is neither a Collection nor an array.');
-                        }
-                    },
-                ]);
+                $fields->put(
+                    $fieldName,
+                    (new FieldFactoryHasMany($this->service))
+                        ->setFieldName($fieldName)
+                        ->setProperty($property)
+                        ->setModel($this->model)
+                        ->build()
+                );
             });
 
         return $fields;
@@ -416,7 +382,14 @@ class TypeFactory
                 if (! $inIgnore
                     && ! $inHasMany
                     && ($forInputType || ! $inHasOne)) {
-                    $fields->put($property->getName(), $this->buildField($property));
+                    $fields->put(
+                        $property->getName(),
+                        (new FieldFactoryScalar($this->service))
+                            ->setFieldName($property->getName())
+                            ->setProperty($property)
+                            ->setModel($this->model)
+                            ->build()
+                    );
                 }
             });
 
@@ -435,70 +408,18 @@ class TypeFactory
                         return;
                     }
 
-                    $fields->put($property->getName(), $this->buildField($property));
+                    $fields->put(
+                        $property->getName(),
+                        (new FieldFactoryScalar($this->service))
+                            ->setFieldName($property->getName())
+                            ->setProperty($property)
+                            ->setModel($this->model)
+                            ->build()
+                    );
                 }
             });
 
         return $fields;
-    }
-
-    /**
-     * Builds a GraphQL typeField from a property.
-     *
-     * @throws EloquentGraphQLException
-     */
-    private function buildField(ReflectionProperty $property): array
-    {
-        return [
-            'type' => $this->buildTypeFromProperty($property),
-            'resolve' => function ($parent) use ($property) {
-                // authorize
-                if (! $this->service->security()->check('viewProperty', $this->model, [$parent, $property->getName()])) {
-                    throw new GraphQLError('You are not authorized to view this property.');
-                }
-
-                // if $source is an iterable (e.g. array), get value by key (field name)
-                if (is_iterable($parent)) {
-                    return $parent[$property->getName()] ?? null;
-                }
-
-                // if $source is an object, get value by either calling the getter or trying to access property directly
-                if (is_object($parent)) {
-                    $methodName = 'get'.ucwords($property->getName());
-                    // try to use the getter
-                    if (method_exists($parent, $methodName)) {
-                        return $parent->{$methodName}();
-                    }
-
-                    // get the property
-                    return $parent->{$property->getName()};
-                }
-
-                return null;
-            },
-        ];
-    }
-
-    /**
-     * Builds a GraphQL type from a property.
-     *
-     * @throws EloquentGraphQLException
-     */
-    private function buildTypeFromProperty(ReflectionProperty $property): Type
-    {
-        // handle arrays
-        if ($property->getType() === 'array') {
-            throw new EloquentGraphQLException("The property {$property->getName()} is of type array which correlates to a GraphQLList, which is not supported in auto-generation.");
-        }
-
-        $type = match (strtolower($property->getType())) {
-            'string' => Type::string(),
-            'int' => Type::int(),
-            'float' => Type::float(),
-            'bool', 'boolean' => Type::boolean(),
-        };
-
-        return $property->isNullable() ? $type : Type::nonNull($type);
     }
 
     public function getName(): string
