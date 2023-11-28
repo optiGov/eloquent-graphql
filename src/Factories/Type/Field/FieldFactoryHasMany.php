@@ -54,7 +54,6 @@ class FieldFactoryHasMany extends FieldFactory
     protected function getType(): NonNull|ObjectType|ScalarType
     {
         $innerType = $this->service->typeFactory($this->property->getType())->build();
-
         return Type::nonNull(Type::listOf(Type::nonNull($innerType)));
     }
 }
