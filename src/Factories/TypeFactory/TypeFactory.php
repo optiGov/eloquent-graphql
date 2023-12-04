@@ -78,7 +78,7 @@ class TypeFactory
     /**
      * The resulting GraphQL connection type, stored for caching purposes.
      */
-    private ?ObjectType $paginationType = null;
+    private ?NonNull $paginationType = null;
 
     /**
      * The resulting GraphQLInputObjectType, stored for caching purposes.
@@ -201,14 +201,14 @@ class TypeFactory
      * @throws ReflectionException
      * @throws EloquentGraphQLException
      */
-    public function buildListPaginated(): ObjectType
+    public function buildListPaginated(): NonNull
     {
         // check if cache can be used
         if ($this->paginationType !== null) {
             return $this->paginationType;
         }
 
-        return $this->paginationType = new ObjectType([
+        $innerType = new ObjectType([
             'name' => $this->name.'Pagination',
             'fields' => [
                 'total' => [
@@ -221,6 +221,8 @@ class TypeFactory
                 ],
             ],
         ]);
+
+        return $this->paginationType = Type::nonNull($innerType);
     }
 
     /**
