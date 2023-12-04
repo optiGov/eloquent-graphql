@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $name
  * @property string $email
- * @property Book[] $books
+ * @property Book[] $books @paginate @filter
  * @property Author[] $authors
  */
 class Publisher extends Model

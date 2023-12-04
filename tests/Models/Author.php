@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $name
  * @property string $email
- * @property Book[] $books
+ * @property Book[] $books @paginate @filter
  * @property Publisher $publisher
  */
 class Author extends Model
