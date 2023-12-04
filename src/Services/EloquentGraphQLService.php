@@ -2,7 +2,7 @@
 
 namespace EloquentGraphQL\Services;
 
-use EloquentGraphQL\Factories\Type\TypeFactory;
+use EloquentGraphQL\Factories\TypeFactory\TypeFactory;
 use EloquentGraphQL\GraphQL\RootMutation;
 use EloquentGraphQL\GraphQL\RootQuery;
 use EloquentGraphQL\Language\Vocabulary;
