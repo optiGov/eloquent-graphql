@@ -2,9 +2,9 @@
 
 namespace EloquentGraphQL\GraphQL;
 
-use EloquentGraphQL\Factories\Field\FieldFactoryCreate;
-use EloquentGraphQL\Factories\Field\FieldFactoryDelete;
-use EloquentGraphQL\Factories\Field\FieldFactoryUpdate;
+use EloquentGraphQL\Factories\FieldFactories\FieldFactoryCreate;
+use EloquentGraphQL\Factories\FieldFactories\FieldFactoryDelete;
+use EloquentGraphQL\Factories\FieldFactories\FieldFactoryUpdate;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use GraphQL\Type\Definition\ObjectType;
 use ReflectionException;

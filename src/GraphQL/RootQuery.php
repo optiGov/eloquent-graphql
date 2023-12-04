@@ -2,8 +2,8 @@
 
 namespace EloquentGraphQL\GraphQL;
 
-use EloquentGraphQL\Factories\Field\FieldFactoryAll;
-use EloquentGraphQL\Factories\Field\FieldFactoryView;
+use EloquentGraphQL\Factories\FieldFactories\FieldFactoryAll;
+use EloquentGraphQL\Factories\FieldFactories\FieldFactoryView;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use GraphQL\Type\Definition\ObjectType;
 use ReflectionException;
