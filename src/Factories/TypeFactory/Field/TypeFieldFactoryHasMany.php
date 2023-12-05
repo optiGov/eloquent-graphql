@@ -32,13 +32,17 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                 $this->service->security()->assertCanViewAny($this->model);
 
                 // get entries
-                $methodResult = $parent->{$this->fieldName}();
+                if (method_exists($parent, $this->fieldName)) {
+                    $builderOrIterable = $parent->{$this->fieldName}();
+                } else {
+                    $builderOrIterable = $parent->{$this->fieldName};
+                }
 
                 // build paginator
-                if ($methodResult instanceof Builder) {
-                    $paginator = new PaginatorQuery($methodResult);
+                if ($builderOrIterable instanceof Builder) {
+                    $paginator = new PaginatorQuery($builderOrIterable);
                 } else {
-                    $paginator = new PaginatorIterable($methodResult);
+                    $paginator = new PaginatorIterable($builderOrIterable);
                 }
 
                 // set limit and offset
