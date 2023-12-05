@@ -221,12 +221,13 @@ class TypeFactory
                             'name' => $this->name.'Edge',
                             'fields' => [
                                 'node' => [
-                                    'type' => $this->buildList(),
-                                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
+                                    'type' => $this->buildNonNull(),
+                                    'resolve' => fn (mixed $object) => $object,
                                 ],
                             ],
-                        ])
+                        ]),
                     ))),
+                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
                 ],
             ],
         ]);
