@@ -211,13 +211,22 @@ class TypeFactory
         $innerType = new ObjectType([
             'name' => $this->name.'Pagination',
             'fields' => [
-                'total' => [
+                'totalCount' => [
                     'type' => Type::nonNull(Type::int()),
                     'resolve' => fn (Paginator $paginator) => $paginator->count(),
                 ],
                 'edges' => [
-                    'type' => $this->buildList(),
-                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(
+                        new ObjectType([
+                            'name' => $this->name.'PaginationEdge',
+                            'fields' => [
+                                'node' => [
+                                    'type' => $this->buildList(),
+                                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
+                                ],
+                            ],
+                        ])
+                    ))),
                 ],
             ],
         ]);
