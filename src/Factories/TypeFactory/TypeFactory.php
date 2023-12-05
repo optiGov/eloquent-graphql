@@ -209,7 +209,7 @@ class TypeFactory
         }
 
         $innerType = new ObjectType([
-            'name' => $this->name.'Pagination',
+            'name' => $this->name.'Connection',
             'fields' => [
                 'totalCount' => [
                     'type' => Type::nonNull(Type::int()),
@@ -218,7 +218,7 @@ class TypeFactory
                 'edges' => [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull(
                         new ObjectType([
-                            'name' => $this->name.'PaginationEdge',
+                            'name' => $this->name.'Edge',
                             'fields' => [
                                 'node' => [
                                     'type' => $this->buildList(),
