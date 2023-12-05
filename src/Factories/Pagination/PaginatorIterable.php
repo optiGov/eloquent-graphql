@@ -2,7 +2,6 @@
 
 namespace EloquentGraphQL\Factories\Pagination;
 
-
 use Exception;
 use Illuminate\Support\Collection;
 
@@ -27,7 +26,7 @@ class PaginatorIterable extends Paginator
     {
         if ($this->data instanceof Collection) {
             return $this->data->slice($this->offset ?? 0, $this->limit)->all();
-        } else if (is_array($this->data)) {
+        } elseif (is_array($this->data)) {
             return array_slice($this->data, $this->offset ?? 0, $this->limit);
         }
 
