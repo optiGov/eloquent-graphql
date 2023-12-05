@@ -23,16 +23,14 @@ class PaginatorQuery extends Paginator
 
     public function get(): Collection
     {
-        $clone = $this->queryBuilder->clone();
-
         if ($this->limit) {
-            $clone->limit($this->limit);
+            $this->queryBuilder->limit($this->limit);
         }
 
         if ($this->offset) {
-            $clone->offset($this->offset);
+            $this->queryBuilder->offset($this->offset);
         }
 
-        return $clone->get();
+        return $this->queryBuilder->get();
     }
 }
