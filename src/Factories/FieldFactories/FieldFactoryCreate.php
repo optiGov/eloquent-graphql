@@ -33,7 +33,7 @@ class FieldFactoryCreate extends FieldFactory
 
         return function ($parent, $args) use ($hasMany, $hasOne) {
             // authorize
-            $this->service->security()->assertCanCreate($this->model, $args[$this->pureName]);
+            $this->service->security()->assertCanCreate($this->model, [$args[$this->pureName]]);
 
             // build blueprint model
             $entry = new $this->model();
