@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\TypeFactory\Field;
 
 use EloquentGraphQL\Reflection\ReflectionProperty;
 use EloquentGraphQL\Services\EloquentGraphQLService;
+use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\NonNull;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\ScalarType;
@@ -46,5 +47,5 @@ abstract class TypeFieldFactory
 
     abstract public function build(): array;
 
-    abstract protected function getType(): NonNull|ObjectType|ScalarType;
+    abstract protected function getType(): NonNull|ObjectType|InputObjectType|ScalarType;
 }
