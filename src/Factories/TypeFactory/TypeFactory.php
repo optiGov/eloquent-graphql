@@ -16,7 +16,6 @@ use GraphQL\Type\Definition\NonNull;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use ReflectionException;
 
 class TypeFactory
@@ -214,25 +213,25 @@ class TypeFactory
         }
 
         $innerType = new ObjectType([
-            'name' => $this->name . 'Connection',
+            'name' => $this->name.'Connection',
             'fields' => [
                 'totalCount' => [
                     'type' => Type::nonNull(Type::int()),
-                    'resolve' => fn(Paginator $paginator) => $paginator->count(),
+                    'resolve' => fn (Paginator $paginator) => $paginator->count(),
                 ],
                 'edges' => [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull(
                         new ObjectType([
-                            'name' => $this->name . 'Edge',
+                            'name' => $this->name.'Edge',
                             'fields' => [
                                 'node' => [
                                     'type' => $this->buildNonNull(),
-                                    'resolve' => fn(mixed $object) => $object,
+                                    'resolve' => fn (mixed $object) => $object,
                                 ],
                             ],
                         ]),
                     ))),
-                    'resolve' => fn(Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
+                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
                 ],
             ],
         ]);
@@ -256,7 +255,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->inputType = new InputObjectType([
-            'name' => $this->name . 'Input',
+            'name' => $this->name.'Input',
             'description' => $this->description,
             'fields' => function () use (&$fields) {
                 return $fields->toArray();
@@ -289,7 +288,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->filterType = new InputObjectType([
-            'name' => $this->name . 'FilterInput',
+            'name' => $this->name.'FilterInput',
             'fields' => function () use (&$fields) {
                 return $fields->toArray();
             },
@@ -341,7 +340,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasOne
-            ->filter(fn(ReflectionProperty $property) => $property->isReadable())
+            ->filter(fn (ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put(
                     $fieldName,
@@ -366,7 +365,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasMany
-            ->filter(fn(ReflectionProperty $property) => $property->isReadable())
+            ->filter(fn (ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put(
                     $fieldName,
@@ -391,7 +390,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->docProperties
-            ->filter(fn(ReflectionProperty $property) => $property->isReadable())
+            ->filter(fn (ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $name) use ($fields) {
                 $fields->put(
                     $property->getName(),
@@ -414,7 +413,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasOne
-            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
                     'type' => $property->isNullable() ? Type::int() : Type::nonNull(Type::int()),
@@ -432,7 +431,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasMany
-            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
                     'type' => Type::listOf(Type::nonNull(Type::int())),
@@ -452,8 +451,8 @@ class TypeFactory
         $fields = new Collection();
 
         $this->docProperties
-            ->filter(fn(ReflectionProperty $property) => $property->getName() !== 'id')
-            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => $property->getName() !== 'id')
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $name) use ($fields) {
                 $fields->put(
                     $property->getName(),
@@ -478,7 +477,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->docProperties
-            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $name) use ($fields) {
                 $fields->put(
                     $property->getName(),
@@ -501,10 +500,10 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasOne
-            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
-                    'type' => $this->service->typeFactory($property->getType())->buildFilter()
+                    'type' => $this->service->typeFactory($property->getType())->buildFilter(),
                 ]);
             });
 
@@ -519,10 +518,10 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasMany
-            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
-                    'type' => $this->service->typeFactory($property->getType())->buildFilter()
+                    'type' => $this->service->typeFactory($property->getType())->buildFilter(),
                 ]);
             });
 
