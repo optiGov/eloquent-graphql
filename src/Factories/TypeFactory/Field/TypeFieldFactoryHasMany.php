@@ -107,8 +107,12 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
             return new Collection();
         }
 
-        $args = new Collection();
+        $factory = $this->service->typeFactory($this->property->getType());
 
-        return $args;
+        return new Collection([
+            'filter' => [
+                'type' => $factory->buildFilter(),
+            ],
+        ]);
     }
 }
