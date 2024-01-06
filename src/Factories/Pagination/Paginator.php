@@ -33,7 +33,7 @@ abstract class Paginator
     {
         $this->filter = $filter;
 
-        if($filter){
+        if ($filter) {
             $this->applyFilter($filter);
         }
 

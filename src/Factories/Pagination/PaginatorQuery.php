@@ -66,6 +66,9 @@ class PaginatorQuery extends Paginator
         $this->applyFilterFieldsOnQuery($filter, $query);
     }
 
+    /**
+     * @throws GraphQLError
+     */
     private function applyFilterFieldsOnQuery(array $filter, Builder $query, string $tableName = null): void
     {
         foreach ($filter as $field => $filterInput) {
