@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\TypeFactory;
 
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Factories\Pagination\Paginator;
+use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryFilter;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryHasMany;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryHasOne;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryScalar;
@@ -85,6 +86,11 @@ class TypeFactory
      */
     private ?InputObjectType $inputType = null;
 
+    /**
+     * The resulting GraphQLInputObjectType, stored for caching purposes.
+     */
+    private ?InputObjectType $filterType = null;
+
     public function __construct(EloquentGraphQLService $service)
     {
         $this->service = $service;
@@ -160,7 +166,6 @@ class TypeFactory
         }
 
         $fields = new Collection();
-        $properties = $this->getProperties();
 
         $this->type = new ObjectType([
             'name' => $this->name,
@@ -172,7 +177,7 @@ class TypeFactory
 
         $this->collectFieldsFromClassDoc();
 
-        $fields = $fields->merge($this->buildFieldsFromProperties($properties))
+        $fields = $fields->merge($this->buildFieldsFromProperties())
             ->merge($this->buildFieldsFromHasOne())
             ->merge($this->buildFieldsFromHasMany());
 
@@ -209,25 +214,25 @@ class TypeFactory
         }
 
         $innerType = new ObjectType([
-            'name' => $this->name.'Connection',
+            'name' => $this->name . 'Connection',
             'fields' => [
                 'totalCount' => [
                     'type' => Type::nonNull(Type::int()),
-                    'resolve' => fn (Paginator $paginator) => $paginator->count(),
+                    'resolve' => fn(Paginator $paginator) => $paginator->count(),
                 ],
                 'edges' => [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull(
                         new ObjectType([
-                            'name' => $this->name.'Edge',
+                            'name' => $this->name . 'Edge',
                             'fields' => [
                                 'node' => [
                                     'type' => $this->buildNonNull(),
-                                    'resolve' => fn (mixed $object) => $object,
+                                    'resolve' => fn(mixed $object) => $object,
                                 ],
                             ],
                         ]),
                     ))),
-                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
+                    'resolve' => fn(Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
                 ],
             ],
         ]);
@@ -249,10 +254,9 @@ class TypeFactory
         }
 
         $fields = new Collection();
-        $properties = $this->getProperties();
 
         $this->inputType = new InputObjectType([
-            'name' => $this->name.'Input',
+            'name' => $this->name . 'Input',
             'description' => $this->description,
             'fields' => function () use (&$fields) {
                 return $fields->toArray();
@@ -264,11 +268,48 @@ class TypeFactory
         // collect fields from properties but do not ignore the field if it is the id of a hasOne relation
         // because those fields can be directly filled with a scalar value and need no extra input type like
         // a hasMany relationship does with a GraphQLList(GraphQLInt).
-        $fields = $fields->merge($this->buildFieldsFromProperties($properties, true))
-            ->merge($this->buildInputFieldsFromHasOne())
-            ->merge($this->buildInputFieldsFromHasMany());
+        $fields = $fields->merge($this->buildInputTypeFieldsFromProperties(true))
+            ->merge($this->buildInputTypeFieldsFromHasOne())
+            ->merge($this->buildInputTypeFieldsFromHasMany());
 
         return $this->inputType;
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws EloquentGraphQLException
+     */
+    public function buildFilter(): InputObjectType
+    {
+        // check if cache can be used
+        if ($this->filterType !== null) {
+            return $this->filterType;
+        }
+
+        $fields = new Collection();
+
+        $this->filterType = new InputObjectType([
+            'name' => $this->name . 'FilterInput',
+            'fields' => function () use (&$fields) {
+                return $fields->toArray();
+            },
+        ]);
+
+        $this->collectFieldsFromClassDoc();
+
+        $fields = $fields->merge([
+            'and' => [
+                'type' => Type::listOf(Type::nonNull($this->filterType)),
+            ],
+            'or' => [
+                'type' => Type::listOf(Type::nonNull($this->filterType)),
+            ],
+        ])
+            ->merge($this->buildFilterTypeFieldsFromProperties())
+            ->merge($this->buildFilterTypeFieldsFromHasOne())
+            ->merge($this->buildFilterTypeFieldsFromHasMany());
+
+        return $this->filterType;
     }
 
     /**
@@ -292,42 +333,6 @@ class TypeFactory
 
     /**
      * Builds several GraphQL typeFields from the has-one relationships.
-     */
-    private function buildInputFieldsFromHasOne(): Collection
-    {
-        $fields = new Collection();
-
-        $this->hasOne
-            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
-            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
-                $fields->put($fieldName, [
-                    'type' => $property->isNullable() ? Type::int() : Type::nonNull(Type::int()),
-                ]);
-            });
-
-        return $fields;
-    }
-
-    /**
-     * Builds several GraphQL typeFields from the has-many relationships.
-     */
-    private function buildInputFieldsFromHasMany(): Collection
-    {
-        $fields = new Collection();
-
-        $this->hasMany
-            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
-            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
-                $fields->put($fieldName, [
-                    'type' => Type::listOf(Type::nonNull(Type::int())),
-                ]);
-            });
-
-        return $fields;
-    }
-
-    /**
-     * Builds several GraphQL typeFields from the has-one relationships.
      *
      * @throws ReflectionException|EloquentGraphQLException
      */
@@ -336,7 +341,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasOne
-            ->filter(fn (ReflectionProperty $property) => $property->isReadable())
+            ->filter(fn(ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put(
                     $fieldName,
@@ -361,7 +366,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasMany
-            ->filter(fn (ReflectionProperty $property) => $property->isReadable())
+            ->filter(fn(ReflectionProperty $property) => $property->isReadable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put(
                     $fieldName,
@@ -381,73 +386,144 @@ class TypeFactory
      *
      * @throws EloquentGraphQLException
      */
-    private function buildFieldsFromProperties(Collection $properties, bool $forInputType = false): Collection
+    private function buildFieldsFromProperties(): Collection
     {
         $fields = new Collection();
-        $seenDocProperties = new Collection();
-
-        $properties
-            ->when($forInputType, fn (Collection $properties) => $properties->filter(fn (ReflectionProperty $property) => $property->getName() !== 'id'))
-            ->each(function (ReflectionProperty $property) use ($fields, $seenDocProperties, $forInputType) {
-
-                // check if property is read or write only via checking existence in $this->docProperties
-                if ($this->docProperties->has($property->getName())) {
-                    // note that property was already taken into account
-                    $seenDocProperties->add($property->getName());
-
-                    // continue if is not writable on input type
-                    if ($forInputType && ! $this->docProperties[$property->getName()]->isWritable()) {
-                        return;
-                    }
-
-                    // continue if is not readable on default type
-                    if (! $forInputType && ! $this->docProperties[$property->getName()]->isReadable()) {
-                        return;
-                    }
-                }
-
-                // check if property is allowed and not in $hasMany or $hasOne
-                $inIgnore = $this->ignore->contains($property->getName());
-                $inHasMany = $this->hasMany->has(Str::remove('_id', $property->getName()));
-                $inHasOne = $this->hasOne->has(Str::remove('_id', $property->getName()));
-                if (! $inIgnore
-                    && ! $inHasMany
-                    && ($forInputType || ! $inHasOne)) {
-                    $fields->put(
-                        $property->getName(),
-                        (new TypeFieldFactoryScalar($this->service))
-                            ->setFieldName($property->getName())
-                            ->setProperty($property)
-                            ->setModel($this->model)
-                            ->build()
-                    );
-                }
-            });
 
         $this->docProperties
-            ->when($forInputType, fn (Collection $properties) => $properties->filter(fn (ReflectionProperty $property) => $property->getName() !== 'id'))
-            ->each(function (ReflectionProperty $property, string $name) use ($fields, $seenDocProperties, $forInputType) {
-                $inSeenDocProperties = $seenDocProperties->contains($name);
-                if (! $inSeenDocProperties) {
-                    // continue if is not writable on input type
-                    if ($forInputType && ! $property->isWritable()) {
-                        return;
-                    }
+            ->filter(fn(ReflectionProperty $property) => $property->isReadable())
+            ->each(function (ReflectionProperty $property, string $name) use ($fields) {
+                $fields->put(
+                    $property->getName(),
+                    (new TypeFieldFactoryScalar($this->service))
+                        ->setFieldName($property->getName())
+                        ->setProperty($property)
+                        ->setModel($this->model)
+                        ->build()
+                );
+            });
 
-                    // continue if is not readable on default type
-                    if (! $forInputType && ! $property->isReadable()) {
-                        return;
-                    }
+        return $fields;
+    }
 
-                    $fields->put(
-                        $property->getName(),
-                        (new TypeFieldFactoryScalar($this->service))
-                            ->setFieldName($property->getName())
-                            ->setProperty($property)
-                            ->setModel($this->model)
-                            ->build()
-                    );
-                }
+    /**
+     * Builds several GraphQL typeFields from the has-one relationships.
+     */
+    private function buildInputTypeFieldsFromHasOne(): Collection
+    {
+        $fields = new Collection();
+
+        $this->hasOne
+            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
+                $fields->put($fieldName, [
+                    'type' => $property->isNullable() ? Type::int() : Type::nonNull(Type::int()),
+                ]);
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields from the has-many relationships.
+     */
+    private function buildInputTypeFieldsFromHasMany(): Collection
+    {
+        $fields = new Collection();
+
+        $this->hasMany
+            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
+                $fields->put($fieldName, [
+                    'type' => Type::listOf(Type::nonNull(Type::int())),
+                ]);
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields for the input type from the properties.
+     *
+     * @throws EloquentGraphQLException
+     */
+    private function buildInputTypeFieldsFromProperties(): Collection
+    {
+        $fields = new Collection();
+
+        $this->docProperties
+            ->filter(fn(ReflectionProperty $property) => $property->getName() !== 'id')
+            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $name) use ($fields) {
+                $fields->put(
+                    $property->getName(),
+                    (new TypeFieldFactoryScalar($this->service))
+                        ->setFieldName($property->getName())
+                        ->setProperty($property)
+                        ->setModel($this->model)
+                        ->build()
+                );
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields for the input type from the properties.
+     *
+     * @throws EloquentGraphQLException
+     */
+    private function buildFilterTypeFieldsFromProperties(): Collection
+    {
+        $fields = new Collection();
+
+        $this->docProperties
+            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $name) use ($fields) {
+                $fields->put(
+                    $property->getName(),
+                    (new TypeFieldFactoryFilter($this->service))
+                        ->setFieldName($property->getName())
+                        ->setProperty($property)
+                        ->setModel($this->model)
+                        ->build()
+                );
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields from the has-one relationships.
+     */
+    private function buildFilterTypeFieldsFromHasOne(): Collection
+    {
+        $fields = new Collection();
+
+        $this->hasOne
+            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
+                $fields->put($fieldName, [
+                    'type' => $this->service->typeFactory($property->getType())->buildFilter()
+                ]);
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields from the has-many relationships.
+     */
+    private function buildFilterTypeFieldsFromHasMany(): Collection
+    {
+        $fields = new Collection();
+
+        $this->hasMany
+            ->filter(fn(ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
+                $fields->put($fieldName, [
+                    'type' => $this->service->typeFactory($property->getType())->buildFilter()
+                ]);
             });
 
         return $fields;
