@@ -48,7 +48,8 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                 // set limit and offset
                 $paginator
                     ->limit($args['limit'] ?? null)
-                    ->offset($args['offset'] ?? null);
+                    ->offset($args['offset'] ?? null)
+                    ->filter($args['filter'] ?? null);
 
                 // return paginator or filtered entries
                 if ($this->property->hasPagination()) {
