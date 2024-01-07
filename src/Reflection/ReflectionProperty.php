@@ -41,6 +41,11 @@ class ReflectionProperty
     private bool $hasFilters = false;
 
     /**
+     * Determines whether the property has order.
+     */
+    private bool $hasOrder = false;
+
+    /**
      * Determines whether the property has pagination.
      */
     private bool $hasPagination = false;
@@ -167,6 +172,24 @@ class ReflectionProperty
     public function setHasFilters(bool $hasFilters): ReflectionProperty
     {
         $this->hasFilters = $hasFilters;
+
+        return $this;
+    }
+
+    /**
+     * Returns whether the property has order.
+     */
+    public function hasOrder(): bool
+    {
+        return $this->hasOrder;
+    }
+
+    /**
+     * Sets whether the property has order.
+     */
+    public function setHasOrder(bool $hasOrder): ReflectionProperty
+    {
+        $this->hasOrder = $hasOrder;
 
         return $this;
     }
