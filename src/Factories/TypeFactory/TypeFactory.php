@@ -7,6 +7,7 @@ use EloquentGraphQL\Factories\Pagination\Paginator;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryFilter;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryHasMany;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryHasOne;
+use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryOrder;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryScalar;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use EloquentGraphQL\Reflection\ReflectionProperty;
@@ -89,6 +90,11 @@ class TypeFactory
      * The resulting GraphQLInputObjectType, stored for caching purposes.
      */
     private ?InputObjectType $filterType = null;
+
+    /**
+     * The resulting GraphQLInputObjectType, stored for caching purposes.
+     */
+    private ?InputObjectType $orderType = null;
 
     public function __construct(EloquentGraphQLService $service)
     {
@@ -312,6 +318,35 @@ class TypeFactory
     }
 
     /**
+     * @throws ReflectionException
+     * @throws EloquentGraphQLException
+     */
+    public function buildOrder(): InputObjectType
+    {
+        // check if cache can be used
+        if ($this->orderType !== null) {
+            return $this->orderType;
+        }
+
+        $fields = new Collection();
+
+        $this->orderType = new InputObjectType([
+            'name' => $this->name.'OrderInput',
+            'fields' => function () use (&$fields) {
+                return $fields->toArray();
+            },
+        ]);
+
+        $this->collectFieldsFromClassDoc();
+
+        $fields = $fields->merge($this->buildOrderTypeFieldsFromProperties())
+            ->merge($this->buildOrderTypeFieldsFromHasOne())
+            ->merge($this->buildOrderTypeFieldsFromHasMany());
+
+        return $this->orderType;
+    }
+
+    /**
      * Collects field from the class doc and uses those to add hasMany and hasOne relations.
      *
      * @throws ReflectionException
@@ -522,6 +557,67 @@ class TypeFactory
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
                     'type' => $this->service->typeFactory($property->getType())->buildFilter(),
+                ]);
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields for the order type from the properties.
+     *
+     * @throws EloquentGraphQLException
+     */
+    private function buildOrderTypeFieldsFromProperties(): Collection
+    {
+        $fields = new Collection();
+
+        $this->docProperties
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property) use ($fields) {
+                $fields->put(
+                    $property->getName(),
+                    (new TypeFieldFactoryOrder($this->service))
+                        ->setFieldName($property->getName())
+                        ->setProperty($property)
+                        ->setModel($this->model)
+                        ->build()
+                );
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields from the has-one relationships.
+     */
+    private function buildOrderTypeFieldsFromHasOne(): Collection
+    {
+        $fields = new Collection();
+
+        $this->hasOne
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
+                $fields->put($fieldName, [
+                    'type' => $this->service->typeFactory($property->getType())->buildOrder(),
+                ]);
+            });
+
+        return $fields;
+    }
+
+    /**
+     * Builds several GraphQL typeFields from the has-many relationships.
+     */
+    private function buildOrderTypeFieldsFromHasMany(): Collection
+    {
+        $fields = new Collection();
+
+        $this->hasMany
+            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
+            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
+                $fields->put($fieldName, [
+                    'type' => $this->service->typeFactory($property->getType())->buildOrder(),
                 ]);
             });
 
