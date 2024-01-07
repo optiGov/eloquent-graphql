@@ -82,7 +82,7 @@ class ReflectionInspector
 
         // match properties
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filter)?/m';
+            $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)?/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
@@ -100,7 +100,8 @@ class ReflectionInspector
                         ->setKind($kind)
                         ->setHasDefaultValue(false)
                         ->setHasPagination($matches[8][0] === '@paginate')
-                        ->setHasFilters($matches[9][0] === '@filter')
+                        ->setHasFilters($matches[9][0] === '@filterable')
+                        ->setHasOrder($matches[10][0] === '@orderable')
                 );
             }
         }
