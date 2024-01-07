@@ -76,12 +76,18 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
         }
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws EloquentGraphQLException
+     */
     private function getArgs(): array
     {
         $args = new Collection();
 
-        $args = $args->merge($this->getArgsPagination());
-        $args = $args->merge($this->getArgsFilter());
+        $args = $args
+            ->merge($this->getArgsPagination())
+            ->merge($this->getArgsFilter())
+            ->merge($this->getArgsOrder());
 
         return $args->toArray();
     }
@@ -102,6 +108,10 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
         ]);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws EloquentGraphQLException
+     */
     private function getArgsFilter(): Collection
     {
         if (! $this->property->hasFilters()) {
@@ -113,6 +123,24 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
         return new Collection([
             'filter' => [
                 'type' => $factory->buildFilter(),
+            ],
+        ]);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    private function getArgsOrder(): Collection
+    {
+        if (! $this->property->hasOrder()) {
+            return new Collection();
+        }
+
+        $factory = $this->service->typeFactory($this->property->getType());
+
+        return new Collection([
+            'order' => [
+                'type' => $factory->buildOrder(),
             ],
         ]);
     }
