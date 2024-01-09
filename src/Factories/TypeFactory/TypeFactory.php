@@ -340,8 +340,7 @@ class TypeFactory
         $this->collectFieldsFromClassDoc();
 
         $fields = $fields->merge($this->buildOrderTypeFieldsFromProperties())
-            ->merge($this->buildOrderTypeFieldsFromHasOne())
-            ->merge($this->buildOrderTypeFieldsFromHasMany());
+            ->merge($this->buildOrderTypeFieldsFromHasOne());
 
         return $this->orderType;
     }
@@ -596,24 +595,6 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasOne
-            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
-            ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
-                $fields->put($fieldName, [
-                    'type' => $this->service->typeFactory($property->getType())->buildOrder(),
-                ]);
-            });
-
-        return $fields;
-    }
-
-    /**
-     * Builds several GraphQL typeFields from the has-many relationships.
-     */
-    private function buildOrderTypeFieldsFromHasMany(): Collection
-    {
-        $fields = new Collection();
-
-        $this->hasMany
             ->filter(fn (ReflectionProperty $property) => $property->isWritable())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
