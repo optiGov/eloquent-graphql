@@ -10,6 +10,7 @@ use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\ScalarType;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Contracts\Database\Query\Builder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use ReflectionException;
 
@@ -31,8 +32,18 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                 // check if user can view any entry
                 $this->service->security()->assertCanViewAny($this->model);
 
+                // get args
+                $limit = $args['limit'] ?? null;
+                $offset = $args['offset'] ?? null;
+                $filter = $args['filter'] ?? null;
+                $order = $args['order'] ?? null;
+
                 // get entries
-                if (method_exists($parent, $this->fieldName)) {
+                $fieldIsMethod = method_exists($parent, $this->fieldName);
+                $needToBuildQuery = $limit || $offset || $filter || $order;
+
+                // only resolve query builder if we need to paginate or filter
+                if ($fieldIsMethod && $needToBuildQuery) {
                     $builderOrIterable = $parent->{$this->fieldName}();
                 } else {
                     $builderOrIterable = $parent->{$this->fieldName};
@@ -40,6 +51,8 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
 
                 // build paginator
                 if ($builderOrIterable instanceof Builder) {
+                    // use table.* to prevent issues with joins
+                    $builderOrIterable->select($builderOrIterable->getModel()->getTable() . '.*');
                     $paginator = new PaginatorQuery($builderOrIterable);
                 } else {
                     $paginator = new PaginatorIterable($builderOrIterable);
@@ -47,9 +60,10 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
 
                 // set limit and offset
                 $paginator
-                    ->limit($args['limit'] ?? null)
-                    ->offset($args['offset'] ?? null)
-                    ->filter($args['filter'] ?? null);
+                    ->limit($limit)
+                    ->offset($offset)
+                    ->filter($filter)
+                    ->order($order);
 
                 // return paginator or filtered entries
                 if ($this->property->hasPagination()) {
@@ -94,7 +108,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
 
     private function getArgsPagination(): Collection
     {
-        if (! $this->property->hasPagination()) {
+        if (!$this->property->hasPagination()) {
             return new Collection();
         }
 
@@ -114,7 +128,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
      */
     private function getArgsFilter(): Collection
     {
-        if (! $this->property->hasFilters()) {
+        if (!$this->property->hasFilters()) {
             return new Collection();
         }
 
@@ -132,7 +146,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
      */
     private function getArgsOrder(): Collection
     {
-        if (! $this->property->hasOrder()) {
+        if (!$this->property->hasOrder()) {
             return new Collection();
         }
 
