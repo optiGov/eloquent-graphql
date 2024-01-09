@@ -7,6 +7,7 @@ use EloquentGraphQL\Exceptions\GraphQLError;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class PaginatorQuery extends Paginator
 {
@@ -35,19 +36,31 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
+    protected function applyOrder(array $order): void
+    {
+        $this->applyOrderOnQuery($order, $this->queryBuilder);
+    }
+
+    /**
+     * @throws GraphQLError
+     */
     protected function applyFilterOnQuery(array $filter, Builder $query): void
     {
-
+        // apply `and` concatenated filters
+        $anyFilterApplied = false;
         if (Arr::exists($filter, 'and')) {
             foreach ($filter['and'] as $filterLevel) {
                 $query->where(function (Builder $query) use ($filterLevel) {
                     $this->applyFilterOnQuery($filterLevel, $query);
                 });
+                $anyFilterApplied = true;
             }
         }
 
+        // apply `or` concatenated filters
         if (Arr::exists($filter, 'or')) {
-            $method = Arr::exists($filter, 'and')
+            // if no `and` filter was applied, start with `where` instead of `orWhere`
+            $method = $anyFilterApplied
                 ? fn (Closure $callback) => $query->orWhere($callback)
                 : fn (Closure $callback) => $query->where($callback);
 
@@ -56,21 +69,23 @@ class PaginatorQuery extends Paginator
                     $this->applyFilterOnQuery($filterLevel, $query);
                 });
 
+                // after the first `or` filter was applied, use `orWhere` for the rest
                 $method = fn (Closure $callback) => $query->orWhere($callback);
             }
         }
 
-        unset($filter['and']);
-        unset($filter['or']);
-
+        // apply filters on current level
         $this->applyFilterFieldsOnQuery($filter, $query);
     }
 
     /**
      * @throws GraphQLError
      */
-    private function applyFilterFieldsOnQuery(array $filter, Builder $query, string $tableName = null): void
+    private function applyFilterFieldsOnQuery(array $filter, Builder $query, string $tableName = null, int $level = 0): void
     {
+        unset($filter['and']);
+        unset($filter['or']);
+
         foreach ($filter as $field => $filterInput) {
             if (count($filterInput) !== 1) {
                 throw new GraphQLError('Filter must have exactly one operator.');
@@ -106,11 +121,58 @@ class PaginatorQuery extends Paginator
             } elseif ($operator === 'nin') {
                 $query->whereNotIn($field, $value);
             } else {
+                if ($level >= 1) {
+                    throw new GraphQLError('Nested filtering is only allowed up to one level.');
+                }
+
                 // handle relation filter type
                 $tableName = $query->getModel()->{$field}()->getRelated()->getTable();
-                $query->whereHas($field, function (Builder $query) use ($filterInput, $tableName) {
-                    $this->applyFilterFieldsOnQuery($filterInput, $query, $tableName);
+                $query->whereHas($field, function (Builder $query) use ($filterInput, $tableName, $level) {
+                    $this->applyFilterFieldsOnQuery($filterInput, $query, $tableName, $level + 1);
                 });
+            }
+        }
+    }
+
+    /**
+     * @throws GraphQLError
+     */
+    private function applyOrderOnQuery(array $order, Builder $query, string $tableName = null, int $level = 0): void
+    {
+        if (count($order) > 1) {
+            throw new GraphQLError('Order must have exactly one field.');
+        }
+
+        $allowedDirections = ['asc', 'desc'];
+
+        foreach ($order as $field => $orderInput) {
+
+            if ($tableName) {
+                $field = $tableName.'.'.$field;
+            }
+
+            if (Arr::has($orderInput, 'order')) {
+                $direction = Str::lower($orderInput['order']);
+
+                if (! in_array($direction, $allowedDirections)) {
+                    throw new GraphQLError('Order direction must be one of ['.implode(', ', $allowedDirections).']');
+                }
+
+                $query->orderBy($field, $direction);
+            } else {
+                if ($level >= 1) {
+                    throw new GraphQLError('Nested ordering is only allowed up to one level.');
+                }
+
+                // handle relation order type
+                $relation = $query->getModel()->{$field}();
+                $parentTable = $query->getModel()->getTable();
+                $foreignTable = $relation->getRelated()->getTable();
+                $parentKey = $relation->getForeignKeyName();
+                $foreignKey = $relation->getParent()->getKeyName();
+
+                $query->join($foreignTable, $parentTable.'.'.$parentKey, '=', $foreignTable.'.'.$foreignKey);
+                $this->applyOrderOnQuery($orderInput, $query, $foreignTable, $level + 1);
             }
         }
     }
