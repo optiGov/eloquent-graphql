@@ -10,7 +10,6 @@ use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\ScalarType;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Contracts\Database\Query\Builder;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use ReflectionException;
 
@@ -52,7 +51,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                 // build paginator
                 if ($builderOrIterable instanceof Builder) {
                     // use table.* to prevent issues with joins
-                    $builderOrIterable->select($builderOrIterable->getModel()->getTable() . '.*');
+                    $builderOrIterable->select($builderOrIterable->getModel()->getTable().'.*');
                     $paginator = new PaginatorQuery($builderOrIterable);
                 } else {
                     $paginator = new PaginatorIterable($builderOrIterable);
@@ -108,7 +107,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
 
     private function getArgsPagination(): Collection
     {
-        if (!$this->property->hasPagination()) {
+        if (! $this->property->hasPagination()) {
             return new Collection();
         }
 
@@ -128,7 +127,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
      */
     private function getArgsFilter(): Collection
     {
-        if (!$this->property->hasFilters()) {
+        if (! $this->property->hasFilters()) {
             return new Collection();
         }
 
@@ -146,7 +145,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
      */
     private function getArgsOrder(): Collection
     {
-        if (!$this->property->hasOrder()) {
+        if (! $this->property->hasOrder()) {
             return new Collection();
         }
 
