@@ -79,7 +79,7 @@ class TypeFactory
     /**
      * The resulting GraphQL connection type, stored for caching purposes.
      */
-    private ?NonNull $paginationType = null;
+    private ?ObjectType $paginationType = null;
 
     /**
      * The resulting GraphQLInputObjectType, stored for caching purposes.
@@ -211,38 +211,53 @@ class TypeFactory
      * @throws ReflectionException
      * @throws EloquentGraphQLException
      */
-    public function buildListPaginated(): NonNull
+    public function buildPaginated(): ObjectType
     {
         // check if cache can be used
         if ($this->paginationType !== null) {
             return $this->paginationType;
         }
 
-        $innerType = new ObjectType([
+        $fields = new Collection();
+
+        $this->paginationType = new ObjectType([
             'name' => $this->name.'Connection',
-            'fields' => [
-                'totalCount' => [
-                    'type' => Type::nonNull(Type::int()),
-                    'resolve' => fn (Paginator $paginator) => $paginator->count(),
-                ],
-                'edges' => [
-                    'type' => Type::nonNull(Type::listOf(Type::nonNull(
-                        new ObjectType([
-                            'name' => $this->name.'Edge',
-                            'fields' => [
-                                'node' => [
-                                    'type' => $this->buildNonNull(),
-                                    'resolve' => fn (mixed $object) => $object,
-                                ],
+            'fields' => function () use (&$fields) {
+                return $fields->toArray();
+            },
+        ]);
+
+        $fields = $fields->merge([
+            'totalCount' => [
+                'type' => Type::nonNull(Type::int()),
+                'resolve' => fn (Paginator $paginator) => $paginator->count(),
+            ],
+            'edges' => [
+                'type' => Type::nonNull(Type::listOf(Type::nonNull(
+                    new ObjectType([
+                        'name' => $this->name.'Edge',
+                        'fields' => [
+                            'node' => [
+                                'type' => $this->buildNonNull(),
+                                'resolve' => fn (mixed $object) => $object,
                             ],
-                        ]),
-                    ))),
-                    'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
-                ],
+                        ],
+                    ]),
+                ))),
+                'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
             ],
         ]);
 
-        return $this->paginationType = Type::nonNull($innerType);
+        return $this->paginationType;
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws EloquentGraphQLException
+     */
+    public function buildListPaginated(): NonNull
+    {
+        return Type::nonNull($this->buildPaginated());
     }
 
     /**
