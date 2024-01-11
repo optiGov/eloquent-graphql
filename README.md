@@ -54,6 +54,7 @@ $schema = new Schema([
         ->view(Author::class)
         ->all(Book::class)
         ->all(Author::class)
+        ->build(),
     'mutation' => $graphQLService->mutation()
         ->create(Book::class)
         ->create(Author::class)
@@ -61,5 +62,6 @@ $schema = new Schema([
         ->update(Author::class)
         ->delete(Book::class)
         ->delete(Author::class)
+        ->build(),
 ]);
 ```
