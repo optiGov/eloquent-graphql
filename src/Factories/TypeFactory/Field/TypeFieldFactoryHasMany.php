@@ -59,6 +59,8 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
 
                 // set limit and offset
                 $paginator
+                    ->className($this->property->getType())
+                    ->service($this->service)
                     ->limit($limit)
                     ->offset($offset)
                     ->filter($filter)
