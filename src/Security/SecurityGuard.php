@@ -29,6 +29,17 @@ class SecurityGuard
      * @throws BindingResolutionException
      * @throws GraphQLError
      */
+    public function assertCanFilter(string $className, array $filter): void
+    {
+        if (! $this->check('filter', $className, [$filter])) {
+            throw new GraphQLError('You are not authorized to filter this model.');
+        }
+    }
+
+    /**
+     * @throws BindingResolutionException
+     * @throws GraphQLError
+     */
     public function assertCanCreate(string $className, array $data): void
     {
         if (! $this->check('create', $className, $data)) {
