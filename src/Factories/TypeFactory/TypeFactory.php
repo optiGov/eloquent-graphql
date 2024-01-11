@@ -146,18 +146,6 @@ class TypeFactory
     }
 
     /**
-     * Returns the class properties.
-     */
-    private function getProperties(): Collection
-    {
-        if ($this->properties !== null) {
-            return $this->properties;
-        }
-
-        return $this->properties = ReflectionInspector::getProperties($this->model);
-    }
-
-    /**
      * Builds the GraphQLObjectType.
      *
      * @throws ReflectionException
