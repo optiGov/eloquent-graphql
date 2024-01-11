@@ -1,6 +1,9 @@
 # eloquent-graphql
 
-Automatic creation of GraphQL types and fields from Eloquent Models.
+This package automatically creates GraphQL types and fields with their resolvers from Eloquent Models. The package
+utilizes the PHP DocBlock annotations to determine the GraphQL types and fields. 
+It supports pagination, filtering and ordering on properties returning multiple models using a query builder 
+for optimal performance. 
 
 ## Installation
 
