@@ -36,14 +36,6 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
-    protected function applyOrder(array $order): void
-    {
-        $this->applyOrderOnQuery($order, $this->queryBuilder);
-    }
-
-    /**
-     * @throws GraphQLError
-     */
     protected function applyFilterOnQuery(array $filter, Builder $query): void
     {
         // apply `and` concatenated filters
@@ -132,6 +124,14 @@ class PaginatorQuery extends Paginator
                 });
             }
         }
+    }
+
+    /**
+     * @throws GraphQLError
+     */
+    protected function applyOrder(array $order): void
+    {
+        $this->applyOrderOnQuery($order, $this->queryBuilder);
     }
 
     /**
