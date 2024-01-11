@@ -103,7 +103,7 @@ models using a query builder - for example has many relations.
 class Author {
     // ...
 }
-``
+```
 
 ### Custom Fields
 
