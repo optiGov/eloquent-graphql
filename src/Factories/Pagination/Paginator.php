@@ -3,6 +3,12 @@
 namespace EloquentGraphQL\Factories\Pagination;
 
 use EloquentGraphQL\Exceptions\GraphQLError;
+use EloquentGraphQL\Reflection\ReflectionInspector;
+use EloquentGraphQL\Reflection\ReflectionProperty;
+use EloquentGraphQL\Services\EloquentGraphQLService;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Support\Arr;
+use ReflectionException;
 
 abstract class Paginator
 {
@@ -14,6 +20,10 @@ abstract class Paginator
 
     protected ?array $order = null;
 
+    protected EloquentGraphQLService $service;
+
+    protected string $className;
+
     public function offset(?int $n): static
     {
         $this->offset = $n;
@@ -21,9 +31,23 @@ abstract class Paginator
         return $this;
     }
 
+    public function noOffset(): static
+    {
+        $this->offset = null;
+
+        return $this;
+    }
+
     public function limit(?int $n): static
     {
         $this->limit = $n;
+
+        return $this;
+    }
+
+    public function noLimit(): static
+    {
+        $this->limit = null;
 
         return $this;
     }
@@ -36,6 +60,7 @@ abstract class Paginator
         $this->filter = $filter;
 
         if ($filter) {
+            $this->verifyFilter($filter, $this->className);
             $this->applyFilter($filter);
         }
 
@@ -56,18 +81,36 @@ abstract class Paginator
         return $this;
     }
 
-    public function noOffset(): static
+    public function service(EloquentGraphQLService $service): static
     {
-        $this->offset = null;
+        $this->service = $service;
 
         return $this;
     }
 
-    public function noLimit(): static
+    public function className(string $className): static
     {
-        $this->limit = null;
+        $this->className = $className;
 
         return $this;
+    }
+
+    /**
+     * @throws BindingResolutionException
+     * @throws GraphQLError|ReflectionException
+     */
+    protected function verifyFilter(array $filter, string $className): void
+    {
+        $this->service->security()->assertCanFilter($className, $filter);
+
+        $properties = ReflectionInspector::getPropertiesFromClassDoc($className);
+        $properties
+            ->filter(fn (ReflectionProperty $property) => ! $property->isPrimitiveType())
+            ->each(function (ReflectionProperty $property) use ($filter) {
+                if (Arr::exists($filter, $property->getName())) {
+                    $this->verifyFilter($filter[$property->getName()], $property->getType());
+                }
+            });
     }
 
     /**
