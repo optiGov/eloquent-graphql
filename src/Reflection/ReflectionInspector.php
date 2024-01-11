@@ -26,11 +26,6 @@ class ReflectionInspector
             ->getShortName();
     }
 
-    public static function getProperties(string $class): Collection
-    {
-        return new Collection();
-    }
-
     /**
      * @throws ReflectionException
      */
