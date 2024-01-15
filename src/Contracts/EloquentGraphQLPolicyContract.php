@@ -13,6 +13,11 @@ interface EloquentGraphQLPolicyContract
     public function filter(?Authenticatable $user, array $filter): bool;
 
     /**
+     * Determine whether the user can filter for a specific property.
+     */
+    public function filterProperty(?Authenticatable $user, string $property): bool;
+
+    /**
      * Determine whether the user can view any of the models.
      */
     public function viewAny(?Authenticatable $user): bool;
