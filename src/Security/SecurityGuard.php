@@ -34,6 +34,12 @@ class SecurityGuard
         if (! $this->check('filter', $className, [$filter])) {
             throw new GraphQLError('You are not authorized to filter this model.');
         }
+
+        foreach ($filter as $property => $value) {
+            if (! $this->check('filterProperty', $className, [$property])) {
+                throw new GraphQLError('You are not authorized to filter this property.');
+            }
+        }
     }
 
     /**
