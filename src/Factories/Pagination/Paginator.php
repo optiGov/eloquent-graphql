@@ -101,6 +101,7 @@ abstract class Paginator
      */
     protected function verifyFilter(array $filter, string $className): void
     {
+        // verify model and it's properties are filterable
         $this->service->security()->assertCanFilter($className, $filter);
 
         $properties = ReflectionInspector::getPropertiesFromClassDoc($className);
@@ -111,6 +112,18 @@ abstract class Paginator
                     $this->verifyFilter($filter[$property->getName()], $property->getType());
                 }
             });
+
+        // verify all 'and' and 'or' filters are filterable
+        if (Arr::exists($filter, 'and')) {
+            foreach ($filter['and'] as $andFilter) {
+                $this->verifyFilter($andFilter, $className);
+            }
+        }
+        if (Arr::exists($filter, 'or')) {
+            foreach ($filter['or'] as $orFilter) {
+                $this->verifyFilter($orFilter, $className);
+            }
+        }
     }
 
     /**
