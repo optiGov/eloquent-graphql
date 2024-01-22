@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\FieldFactories;
 
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Factories\Pagination\PaginatorQuery;
 use GraphQL\Type\Definition\Type;
 use ReflectionException;
 
@@ -16,7 +17,7 @@ class FieldFactoryAll extends FieldFactory
      */
     protected function buildReturnType(): Type
     {
-        return $this->service->typeFactory($this->model)->buildList();
+        return $this->service->typeFactory($this->model)->buildListPaginated();
     }
 
     /**
@@ -24,23 +25,60 @@ class FieldFactoryAll extends FieldFactory
      */
     protected function buildResolve(): Closure
     {
-        return function () {
+        return function ($parent, $args) {
             // check if any entry can be viewed
             $this->service->security()->assertCanViewAny($this->model);
 
+            // get args
+            $limit = $args['limit'] ?? null;
+            $offset = $args['offset'] ?? null;
+            $filter = $args['filter'] ?? null;
+            $order = $args['order'] ?? null;
+
             // get entries
-            $entries = call_user_func("{$this->model}::all");
+            $builder = call_user_func("{$this->model}::query");
+
+            // use table.* to prevent issues with joins
+            $builder->select($builder->getModel()->getTable().'.*');
+            $paginator = new PaginatorQuery($builder);
+
+            // set limit and offset
+            $paginator
+                ->className($this->model)
+                ->service($this->service)
+                ->limit($limit)
+                ->offset($offset)
+                ->filter($filter)
+                ->order($order);
 
             // filter entries
-            return $this->service->security()->filterViewable($entries);
+            return $paginator;
         };
     }
 
     /**
      * Builds the arguments for the field.
+     *
+     * @throws ReflectionException
+     * @throws EloquentGraphQLException
      */
     protected function buildArgs(): array
     {
-        return [];
+        $factory = $this->service->typeFactory($this->model);
+
+        return [
+            'limit' => [
+                'type' => Type::int(),
+            ],
+            'offset' => [
+                'type' => Type::int(),
+            ],
+            'filter' => [
+                'type' => $factory->buildFilter(),
+            ],
+            'order' => [
+                'type' => $factory->buildOrder(),
+            ],
+        ];
     }
 }
