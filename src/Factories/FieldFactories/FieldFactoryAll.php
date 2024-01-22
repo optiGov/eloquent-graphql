@@ -6,10 +6,38 @@ use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Factories\Pagination\PaginatorQuery;
 use GraphQL\Type\Definition\Type;
+use Illuminate\Support\Collection;
 use ReflectionException;
 
 class FieldFactoryAll extends FieldFactory
 {
+    protected bool $filterable = true;
+
+    protected bool $orderable = true;
+
+    protected bool $paginate = true;
+
+    public function filterable(bool $filter): static
+    {
+        $this->filterable = $filter;
+
+        return $this;
+    }
+
+    public function orderable(bool $order): static
+    {
+        $this->orderable = $order;
+
+        return $this;
+    }
+
+    public function paginate(bool $paginate): static
+    {
+        $this->paginate = $paginate;
+
+        return $this;
+    }
+
     /**
      * Builds the return type for the field.
      *
@@ -66,19 +94,21 @@ class FieldFactoryAll extends FieldFactory
     {
         $factory = $this->service->typeFactory($this->model);
 
-        return [
-            'limit' => [
-                'type' => Type::int(),
-            ],
-            'offset' => [
-                'type' => Type::int(),
-            ],
-            'filter' => [
-                'type' => $factory->buildFilter(),
-            ],
-            'order' => [
-                'type' => $factory->buildOrder(),
-            ],
-        ];
+        $args = new Collection([]);
+
+        if ($this->paginate) {
+            $args->put('limit', Type::int());
+            $args->put('offset', Type::int());
+        }
+
+        if ($this->filterable) {
+            $args->put('filter', $factory->buildFilter());
+        }
+
+        if ($this->orderable) {
+            $args->put('order', $factory->buildOrder());
+        }
+
+        return $args->toArray();
     }
 }
