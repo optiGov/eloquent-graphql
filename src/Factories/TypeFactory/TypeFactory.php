@@ -218,7 +218,10 @@ class TypeFactory
         $fields = $fields->merge([
             'totalCount' => [
                 'type' => Type::nonNull(Type::int()),
-                'resolve' => fn (Paginator $paginator) => $paginator->count(),
+                'resolve' => function (Paginator $paginator) {
+                    $this->service->security()->assertCanViewAny($this->model);
+                    return $paginator->count();
+                },
             ],
             'edges' => [
                 'type' => Type::nonNull(Type::listOf(Type::nonNull(
