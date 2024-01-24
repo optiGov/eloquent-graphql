@@ -220,6 +220,7 @@ class TypeFactory
                 'type' => Type::nonNull(Type::int()),
                 'resolve' => function (Paginator $paginator) {
                     $this->service->security()->assertCanViewAny($this->model);
+
                     return $paginator->count();
                 },
             ],
