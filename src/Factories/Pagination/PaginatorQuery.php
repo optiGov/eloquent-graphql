@@ -131,7 +131,8 @@ class PaginatorQuery extends Paginator
      */
     protected function applyOrder(array $order): void
     {
-        $this->applyOrderOnQuery($order, $this->queryBuilder);
+        $tableName = $this->queryBuilder->getModel()->getTable();
+        $this->applyOrderOnQuery($order, $this->queryBuilder, $tableName);
     }
 
     /**
@@ -147,15 +148,15 @@ class PaginatorQuery extends Paginator
 
         foreach ($order as $field => $orderInput) {
 
-            if ($tableName) {
-                $field = $tableName.'.'.$field;
-            }
-
             if (Arr::has($orderInput, 'order')) {
                 $direction = Str::lower($orderInput['order']);
 
                 if (! in_array($direction, $allowedDirections)) {
                     throw new GraphQLError('Order direction must be one of ['.implode(', ', $allowedDirections).']');
+                }
+
+                if ($tableName) {
+                    $field = $tableName.'.'.$field;
                 }
 
                 $query->orderBy($field, $direction);
