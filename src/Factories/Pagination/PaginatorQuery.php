@@ -2,7 +2,6 @@
 
 namespace EloquentGraphQL\Factories\Pagination;
 
-use Closure;
 use EloquentGraphQL\Exceptions\GraphQLError;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Arr;
@@ -39,31 +38,25 @@ class PaginatorQuery extends Paginator
     protected function applyFilterOnQuery(array $filter, Builder $query): void
     {
         // apply `and` concatenated filters
-        $anyFilterApplied = false;
         if (Arr::exists($filter, 'and')) {
-            foreach ($filter['and'] as $filterLevel) {
-                $query->where(function (Builder $query) use ($filterLevel) {
-                    $this->applyFilterOnQuery($filterLevel, $query);
-                });
-                $anyFilterApplied = true;
-            }
+            $query->where(function (Builder $query) use ($filter) {
+                foreach ($filter['and'] as $filterLevel) {
+                    $query->where(function (Builder $query) use ($filterLevel) {
+                        $this->applyFilterOnQuery($filterLevel, $query);
+                    });
+                }
+            });
         }
 
         // apply `or` concatenated filters
         if (Arr::exists($filter, 'or')) {
-            // if no `and` filter was applied, start with `where` instead of `orWhere`
-            $method = $anyFilterApplied
-                ? fn (Closure $callback) => $query->orWhere($callback)
-                : fn (Closure $callback) => $query->where($callback);
-
-            foreach ($filter['or'] as $filterLevel) {
-                $method(function (Builder $query) use ($filterLevel) {
-                    $this->applyFilterOnQuery($filterLevel, $query);
-                });
-
-                // after the first `or` filter was applied, use `orWhere` for the rest
-                $method = fn (Closure $callback) => $query->orWhere($callback);
-            }
+            $query->where(function (Builder $query) use ($filter) {
+                foreach ($filter['or'] as $filterLevel) {
+                    $query->orWhere(function (Builder $query) use ($filterLevel) {
+                        $this->applyFilterOnQuery($filterLevel, $query);
+                    });
+                }
+            });
         }
 
         // apply filters on current level
