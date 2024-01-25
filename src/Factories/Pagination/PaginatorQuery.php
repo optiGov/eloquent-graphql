@@ -59,6 +59,13 @@ class PaginatorQuery extends Paginator
             });
         }
 
+        // apply `not` concatenated filters
+        if (Arr::exists($filter, 'not')) {
+            $query->whereNot(function (Builder $query) use ($filter) {
+                $this->applyFilterFieldsOnQuery($filter['not'], $query);
+            });
+        }
+
         // apply filters on current level
         $this->applyFilterFieldsOnQuery($filter, $query);
     }
@@ -66,10 +73,11 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
-    private function applyFilterFieldsOnQuery(array $filter, Builder $query, string $tableName = null, int $level = 0): void
+    private function applyFilterFieldsOnQuery(array $filter, Builder $query, ?string $tableName = null, int $level = 0): void
     {
         unset($filter['and']);
         unset($filter['or']);
+        unset($filter['not']);
 
         foreach ($filter as $field => $filterInput) {
             if (count($filterInput) !== 1) {
@@ -131,7 +139,7 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
-    private function applyOrderOnQuery(array $order, Builder $query, string $tableName = null, int $level = 0): void
+    private function applyOrderOnQuery(array $order, Builder $query, ?string $tableName = null, int $level = 0): void
     {
         if (count($order) > 1) {
             throw new GraphQLError('Order must have exactly one field.');
