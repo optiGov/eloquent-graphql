@@ -582,7 +582,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->docProperties
-            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => ! $property->isComputed())
             ->each(function (ReflectionProperty $property) use ($fields) {
                 $fields->put(
                     $property->getName(),
@@ -605,7 +605,7 @@ class TypeFactory
         $fields = new Collection();
 
         $this->hasOne
-            ->filter(fn (ReflectionProperty $property) => $property->isWritable())
+            ->filter(fn (ReflectionProperty $property) => ! $property->isComputed())
             ->each(function (ReflectionProperty $property, string $fieldName) use (&$fields) {
                 $fields->put($fieldName, [
                     'type' => $this->service->typeFactory($property->getType())->buildOrder(),
