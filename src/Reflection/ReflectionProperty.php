@@ -50,6 +50,11 @@ class ReflectionProperty
      */
     private bool $hasPagination = false;
 
+    /**
+     * Determines whether the property is computed.
+     */
+    private bool $isComputed = false;
+
     public function isNullable(): bool
     {
         return str_starts_with($this->type, '?');
@@ -208,6 +213,24 @@ class ReflectionProperty
     public function setHasPagination(bool $hasPagination): ReflectionProperty
     {
         $this->hasPagination = $hasPagination;
+
+        return $this;
+    }
+
+    /**
+     * Returns whether the property is computed.
+     */
+    public function isComputed(): bool
+    {
+        return $this->isComputed;
+    }
+
+    /**
+     * Sets whether the property is computed.
+     */
+    public function setIsComputed(bool $isComputed): ReflectionProperty
+    {
+        $this->isComputed = $isComputed;
 
         return $this;
     }
