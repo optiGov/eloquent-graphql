@@ -3,6 +3,7 @@
 namespace EloquentGraphQL\Factories\TypeFactory\Field;
 
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use GraphQL\Type\Definition\ListOfType;
 use GraphQL\Type\Definition\NonNull;
 use GraphQL\Type\Definition\ScalarType;
 use GraphQL\Type\Definition\Type;
@@ -45,11 +46,11 @@ class TypeFieldFactoryScalar extends TypeFieldFactory
     /**
      * @throws EloquentGraphQLException
      */
-    protected function getType(): NonNull|ScalarType
+    protected function getType(): NonNull|ListOfType|ScalarType
     {
         // handle arrays
         if ($this->property->getType() === 'array') {
-            throw new EloquentGraphQLException("The property {$this->property->getName()} is of type array which correlates to a GraphQLList, which is not supported in auto-generation.");
+            throw new EloquentGraphQLException("The property {$this->property->getName()} is of literal type 'array' which correlates to a GraphQLList with no inner type, which is not supported in auto-generation. Please use a scalar type with square brackets (e.g. 'string[]') or a custom field.");
         }
 
         $type = match (strtolower($this->property->getType())) {
@@ -58,6 +59,10 @@ class TypeFieldFactoryScalar extends TypeFieldFactory
             'float' => Type::float(),
             'bool', 'boolean' => Type::boolean(),
         };
+
+        if ($this->property->isArrayType()) {
+            $type = Type::listOf(Type::nonNull($type));
+        }
 
         return $this->property->isNullable() ? $type : Type::nonNull($type);
     }
