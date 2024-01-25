@@ -9,6 +9,8 @@ namespace EloquentGraphQL\Types;
  * @property ?int $gt
  * @property ?int $lte
  * @property ?int $gte
+ * @property ?int[] $in
+ * @property ?int[] $nin
  */
 class FilterInteger
 {

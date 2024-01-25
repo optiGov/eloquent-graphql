@@ -9,6 +9,8 @@ namespace EloquentGraphQL\Types;
  * @property ?float $gt
  * @property ?float $lte
  * @property ?float $gte
+ * @property ?float[] $in
+ * @property ?float[] $nin
  */
 class FilterFloat
 {
