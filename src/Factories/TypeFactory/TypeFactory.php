@@ -316,6 +316,9 @@ class TypeFactory
             'or' => [
                 'type' => Type::listOf(Type::nonNull($this->filterType)),
             ],
+            'not' => [
+                'type' => $this->filterType,
+            ],
         ])
             ->merge($this->buildFilterTypeFieldsFromProperties())
             ->merge($this->buildFilterTypeFieldsFromHasOne())
