@@ -26,8 +26,8 @@ class FieldTest extends TestCase
         $this->assertInstanceOf(Type::class, $type);
         $this->assertSame('Query', $type->name);
 
-        $this->assertSame('[Book!]!', $type->getField('allBooks')->getType()->toString());
-        $this->assertSame('[Author!]!', $type->getField('allAuthors')->getType()->toString());
+        $this->assertSame('BookConnection!', $type->getField('allBooks')->getType()->toString());
+        $this->assertSame('AuthorConnection!', $type->getField('allAuthors')->getType()->toString());
         $this->assertSame('Book', $type->getField('book')->getType()->toString());
         $this->assertSame('Author', $type->getField('author')->getType()->toString());
     }
