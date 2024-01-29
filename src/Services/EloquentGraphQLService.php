@@ -9,6 +9,7 @@ use EloquentGraphQL\Language\Vocabulary;
 use EloquentGraphQL\Language\VocabularyEnglish;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use EloquentGraphQL\Security\SecurityGuard;
+use GraphQL\Type\Definition\ScalarType;
 use Illuminate\Support\Collection;
 use ReflectionException;
 
@@ -18,12 +19,15 @@ class EloquentGraphQLService
 
     protected Collection $typeFactories;
 
+    protected Collection $scalarTypes;
+
     private SecurityGuard $securityGuard;
 
     public function __construct()
     {
         $this->vocab = new VocabularyEnglish();
         $this->typeFactories = new Collection();
+        $this->scalarTypes = new Collection();
         $this->securityGuard = new SecurityGuard();
     }
 
@@ -66,6 +70,19 @@ class EloquentGraphQLService
         $this->typeFactories->put($model, $typeFactory);
 
         return $typeFactory;
+    }
+
+    public function scalarType(string $class): ScalarType
+    {
+        if ($this->scalarTypes->has($class)) {
+            return $this->scalarTypes->get($class);
+        }
+
+        $scalarType = new $class();
+
+        $this->scalarTypes->put($class, $scalarType);
+
+        return $scalarType;
     }
 
     public function security(): SecurityGuard
