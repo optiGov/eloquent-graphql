@@ -3,6 +3,7 @@
 namespace EloquentGraphQL\Factories\TypeFactory\Field;
 
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Types\CarbonType;
 use GraphQL\Type\Definition\ListOfType;
 use GraphQL\Type\Definition\NonNull;
 use GraphQL\Type\Definition\ScalarType;
@@ -58,6 +59,7 @@ class TypeFieldFactoryScalar extends TypeFieldFactory
             'int' => Type::int(),
             'float' => Type::float(),
             'bool', 'boolean' => Type::boolean(),
+            'carbon' => $this->service->scalarType(CarbonType::class),
         };
 
         if ($this->property->isArrayType()) {
