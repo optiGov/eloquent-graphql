@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\TypeFactory\Field;
 
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Types\FilterBoolean;
+use EloquentGraphQL\Types\FilterCarbon;
 use EloquentGraphQL\Types\FilterFloat;
 use EloquentGraphQL\Types\FilterInteger;
 use EloquentGraphQL\Types\FilterString;
@@ -36,6 +37,7 @@ class TypeFieldFactoryFilter extends TypeFieldFactory
             'int' => FilterInteger::class,
             'float' => FilterFloat::class,
             'bool', 'boolean' => FilterBoolean::class,
+            'carbon' => FilterCarbon::class,
         };
 
         return $this->service->typeFactory($filterClass)->buildInput();
