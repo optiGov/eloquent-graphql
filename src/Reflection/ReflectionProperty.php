@@ -81,8 +81,8 @@ class ReflectionProperty
 
     public function isPrimitiveType(): bool
     {
-        return match ($this->getType()) {
-            'int', 'bool', 'boolean', 'string', 'float' => true,
+        return match (strtolower($this->getType())) {
+            'int', 'bool', 'boolean', 'string', 'float', 'carbon' => true,
             default => false
         };
     }
