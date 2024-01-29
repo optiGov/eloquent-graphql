@@ -73,54 +73,48 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
-    private function applyFilterFieldsOnQuery(array $filter, Builder $query, string $tableName = null, int $level = 0): void
+    private function applyFilterFieldsOnQuery(array $filter, Builder $query, ?string $tableName = null, int $level = 0): void
     {
         unset($filter['and']);
         unset($filter['or']);
         unset($filter['not']);
 
         foreach ($filter as $field => $filterInput) {
-            if (count($filterInput) !== 1) {
-                throw new GraphQLError('Filter must have exactly one operator.');
-            }
-
             $qualifiedField = $tableName ? $tableName.'.'.$field : $field;
-
-            $operator = Arr::first(array_keys($filterInput));
-            $value = Arr::first($filterInput);
-
-            if ($operator === 'eq') {
-                if ($value === null) {
-                    $query->whereNull($qualifiedField);
+            foreach ($filterInput as $operator => $value) {
+                if ($operator === 'eq') {
+                    if ($value === null) {
+                        $query->whereNull($qualifiedField);
+                    } else {
+                        $query->where($qualifiedField, '=', $value);
+                    }
+                } elseif ($operator === 'ne') {
+                    $query->where($qualifiedField, '!=', $value);
+                } elseif ($operator === 'lt') {
+                    $query->where($qualifiedField, '<', $value);
+                } elseif ($operator === 'gt') {
+                    $query->where($qualifiedField, '>', $value);
+                } elseif ($operator === 'lte') {
+                    $query->where($qualifiedField, '<=', $value);
+                } elseif ($operator === 'gte') {
+                    $query->where($qualifiedField, '>=', $value);
+                } elseif ($operator === 'like') {
+                    $query->where($qualifiedField, 'like', $value);
+                } elseif ($operator === 'in') {
+                    $query->whereIn($qualifiedField, $value);
+                } elseif ($operator === 'nin') {
+                    $query->whereNotIn($qualifiedField, $value);
                 } else {
-                    $query->where($qualifiedField, '=', $value);
-                }
-            } elseif ($operator === 'ne') {
-                $query->where($qualifiedField, '!=', $value);
-            } elseif ($operator === 'lt') {
-                $query->where($qualifiedField, '<', $value);
-            } elseif ($operator === 'gt') {
-                $query->where($qualifiedField, '>', $value);
-            } elseif ($operator === 'lte') {
-                $query->where($qualifiedField, '<=', $value);
-            } elseif ($operator === 'gte') {
-                $query->where($qualifiedField, '>=', $value);
-            } elseif ($operator === 'like') {
-                $query->where($qualifiedField, 'like', $value);
-            } elseif ($operator === 'in') {
-                $query->whereIn($qualifiedField, $value);
-            } elseif ($operator === 'nin') {
-                $query->whereNotIn($qualifiedField, $value);
-            } else {
-                if ($level >= 1) {
-                    throw new GraphQLError('Nested filtering is only allowed up to one level.');
-                }
+                    if ($level >= 1) {
+                        throw new GraphQLError('Nested filtering is only allowed up to one level.');
+                    }
 
-                // handle relation filter type
-                $tableName = $query->getModel()->{$field}()->getRelated()->getTable();
-                $query->whereHas($qualifiedField, function (Builder $query) use ($filterInput, $tableName, $level) {
-                    $this->applyFilterFieldsOnQuery($filterInput, $query, $tableName, $level + 1);
-                });
+                    // handle relation filter type
+                    $tableName = $query->getModel()->{$field}()->getRelated()->getTable();
+                    $query->whereHas($qualifiedField, function (Builder $query) use ($filterInput, $tableName, $level) {
+                        $this->applyFilterFieldsOnQuery($filterInput, $query, $tableName, $level + 1);
+                    });
+                }
             }
         }
     }
@@ -137,7 +131,7 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
-    private function applyOrderOnQuery(array $order, Builder $query, string $tableName = null, int $level = 0): void
+    private function applyOrderOnQuery(array $order, Builder $query, ?string $tableName = null, int $level = 0): void
     {
         if (count($order) > 1) {
             throw new GraphQLError('Order must have exactly one field.');
