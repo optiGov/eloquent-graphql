@@ -12,7 +12,7 @@ use GraphQL\Utils\Utils;
 
 class CarbonType extends ScalarType
 {
-    public string $name = 'Carbon';
+    public string $name = 'DateTime';
 
     /**
      * @throws Error
