@@ -236,7 +236,7 @@ class TypeFactory
                         ],
                     ]),
                 ))),
-                'resolve' => fn (Paginator $paginator) => $this->service->security()->filterViewable($paginator->get()),
+                'resolve' => fn (Paginator $paginator) => $this->service->security()->assertCanViewAll($paginator->get()),
             ],
         ]);
 

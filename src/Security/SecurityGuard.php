@@ -122,12 +122,16 @@ class SecurityGuard
         }
     }
 
-    public function filterViewable(Collection|iterable $models): Collection
+    /**
+     * @throws BindingResolutionException
+     * @throws GraphQLError
+     */
+    public function assertCanViewAll(Collection|iterable $models): Collection
     {
         if (is_iterable($models)) {
             $models = collect($models);
         }
 
-        return $models->filter(fn (Model $model) => $this->check('view', $model::class, [$model]));
+        return $models->each(fn (Model $model) => $this->assertCanView($model));
     }
 }

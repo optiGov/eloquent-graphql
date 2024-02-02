@@ -70,7 +70,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                 if ($this->property->hasPagination()) {
                     return $paginator;
                 } else {
-                    return $this->service->security()->filterViewable($paginator->get());
+                    return $this->service->security()->assertCanViewAll($paginator->get());
                 }
             },
         ];
