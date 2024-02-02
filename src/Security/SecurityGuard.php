@@ -32,12 +32,13 @@ class SecurityGuard
     public function assertCanFilter(string $className, array $filter): void
     {
         if (! $this->check('filter', $className, [$filter])) {
-            throw new GraphQLError('You are not authorized to filter this model.');
+            $reflectionClass = new \ReflectionClass($className);
+            throw new GraphQLError('You are not authorized to filter the model ['.$reflectionClass->getShortName().'].');
         }
 
         foreach ($filter as $property => $value) {
             if (! $this->check('filterProperty', $className, [$property])) {
-                throw new GraphQLError('You are not authorized to filter this property.');
+                throw new GraphQLError('You are not authorized to filter the property ['.$property.']');
             }
         }
     }
