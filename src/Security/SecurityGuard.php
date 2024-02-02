@@ -4,13 +4,22 @@ namespace EloquentGraphQL\Security;
 
 use EloquentGraphQL\Exceptions\GraphQLError;
 use EloquentGraphQL\Reflection\ReflectionProperty;
+use EloquentGraphQL\Services\EloquentGraphQLService;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use ReflectionException;
 
 class SecurityGuard
 {
+    private EloquentGraphQLService $service;
+
+    public function __construct(EloquentGraphQLService $service)
+    {
+        $this->service = $service;
+    }
+
     /**
      * Checks if the user is authorized to perform the given ability on the given model.
      *
@@ -28,17 +37,19 @@ class SecurityGuard
     /**
      * @throws BindingResolutionException
      * @throws GraphQLError
+     * @throws ReflectionException
      */
     public function assertCanFilter(string $className, array $filter): void
     {
         if (! $this->check('filter', $className, [$filter])) {
-            $reflectionClass = new \ReflectionClass($className);
-            throw new GraphQLError('You are not authorized to filter the model ['.$reflectionClass->getShortName().'].');
+            $typeName = $this->service->typeFactory($className)->getName();
+            throw new GraphQLError('You are not authorized to filter the type ['.$typeName.'].');
         }
 
         foreach ($filter as $property => $value) {
             if (! $this->check('filterProperty', $className, [$property])) {
-                throw new GraphQLError('You are not authorized to filter the property ['.$property.']');
+                $typeName = $this->service->typeFactory($className)->getName();
+                throw new GraphQLError('You are not authorized to filter the property ['.$property.'] of the type ['.$typeName.'].');
             }
         }
     }
@@ -101,11 +112,13 @@ class SecurityGuard
     /**
      * @throws BindingResolutionException
      * @throws GraphQLError
+     * @throws ReflectionException
      */
     public function assertCanViewAny(string $className): void
     {
         if (! $this->check('viewAny', $className)) {
-            throw new GraphQLError('You are not authorized to view any of these models.');
+            $typeName = $this->service->typeFactory($className)->getName();
+            throw new GraphQLError('You are not authorized to view any models of the type ['.$typeName.'].');
         }
     }
 
