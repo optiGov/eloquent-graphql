@@ -35,7 +35,7 @@ class CarbonType extends ScalarType
         return $date->format('Y-m-d H:i:s');
     }
 
-    public function parseLiteral(Node $valueNode, ?array $variables = null)
+    public function parseLiteral(Node $valueNode, array $variables = null)
     {
         // throw GraphQL\Error\Error vs \UnexpectedValueException to locate the error in the query
         if (! $valueNode instanceof StringValueNode) {
