@@ -2,6 +2,7 @@
 
 namespace EloquentGraphQL\Contracts;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 interface EloquentGraphQLPolicyContract
@@ -24,12 +25,12 @@ interface EloquentGraphQLPolicyContract
     /**
      * Determine whether the user can view the model.
      */
-    public function view(?Authenticatable $user, object $model): bool;
+    public function view(?Authenticatable $user, Model $model): bool;
 
     /**
      * Determine whether the user can view a specific model's property.
      */
-    public function viewProperty(?Authenticatable $user, object $model, string $property): bool;
+    public function viewProperty(?Authenticatable $user, Model $model, string $property): bool;
 
     /**
      * Determine whether the user can create models.
@@ -39,10 +40,10 @@ interface EloquentGraphQLPolicyContract
     /**
      * Determine whether the user can update the model.
      */
-    public function update(Authenticatable $user, object $model, array $data): bool;
+    public function update(Authenticatable $user, Model $model, array $data): bool;
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(Authenticatable $user, object $model): bool;
+    public function delete(Authenticatable $user, Model $model): bool;
 }
