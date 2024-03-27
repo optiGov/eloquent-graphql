@@ -107,7 +107,7 @@ class FieldFactoryUpdate extends FieldFactory
                 if ($id === null) {
                     // disconnect old entries
                     if ($relationship instanceof HasOne) {
-                        continue;
+                        $relationship->delete();
                     }
                     if ($relationship instanceof BelongsTo) {
                         $relationship->dissociate();
