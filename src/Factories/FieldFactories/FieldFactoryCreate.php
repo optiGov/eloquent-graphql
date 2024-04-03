@@ -9,6 +9,7 @@ use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use ReflectionException;
 
 class FieldFactoryCreate extends FieldFactory
@@ -47,10 +48,15 @@ class FieldFactoryCreate extends FieldFactory
                 }
             }
             // add one to one or one-to-many relations as direct fields in args
+            $relationsToAddHasOne = [];
             foreach ($hasOne as $field => $value) {
                 if (array_key_exists($field, $args[$this->pureName])) {
                     $relationship = $entry->{$field}();
-                    $args[$this->pureName][$relationship->getForeignKeyName()] = $args[$this->pureName][$field];
+                    if ($relationship instanceof HasOne) {
+                        $relationsToAddHasOne[$field] = $args[$this->pureName][$field];
+                    } else {
+                        $args[$this->pureName][$relationship->getForeignKeyName()] = $args[$this->pureName][$field];
+                    }
                     unset($args[$this->pureName][$field]);
                 }
             }
@@ -70,6 +76,13 @@ class FieldFactoryCreate extends FieldFactory
 
             // create the actual entry
             $entry->save();
+
+            // connect one-to-one relations
+            foreach ($relationsToAddHasOne as $field => $id) {
+                $relationship = $entry->{$field}();
+                $model = call_user_func("{$hasOne[$field]->getType()}::find", $id);
+                $relationship->save($model);
+            }
 
             // add relations
             foreach ($relationsToAddMany as $argument => $ids) {
