@@ -79,6 +79,10 @@ class FieldFactoryCreate extends FieldFactory
 
             // connect one-to-one relations
             foreach ($relationsToAddHasOne as $field => $id) {
+                if ($id === null) {
+                    continue;
+                }
+
                 $relationship = $entry->{$field}();
                 $model = call_user_func("{$hasOne[$field]->getType()}::find", $id);
                 $relationship->save($model);
