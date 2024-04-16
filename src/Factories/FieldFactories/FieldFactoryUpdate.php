@@ -124,7 +124,9 @@ class FieldFactoryUpdate extends FieldFactory
             }
 
             // save entry
-            $entry->updateTimestamps();
+            if ($entry->timestamps) {
+                $entry->updateTimestamps();
+            }
             $success = $entry->update();
 
             // dispatch updated event
