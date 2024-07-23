@@ -86,6 +86,9 @@ class VocabularyGerman implements Vocabulary
         if (str_ends_with($word, 'ier')) {
             return $word.'e';
         }
+        if (str_ends_with($word, 'iet')) {
+            return $word.'e';
+        }
         if (str_ends_with($word, 'ig')) {
             return $word.'e';
         }
