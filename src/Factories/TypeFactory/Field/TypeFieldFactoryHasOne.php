@@ -17,6 +17,7 @@ class TypeFieldFactoryHasOne extends TypeFieldFactory
     public function build(): array
     {
         return [
+            'isRelation' => true,
             'type' => $this->getType(),
             'resolve' => function ($parent) {
                 // authorize property

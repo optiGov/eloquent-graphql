@@ -22,6 +22,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
     public function build(): array
     {
         return [
+            'isRelation' => true,
             'type' => $this->getType(),
             'args' => $this->getArgs(),
             'resolve' => function ($parent, $args) {
