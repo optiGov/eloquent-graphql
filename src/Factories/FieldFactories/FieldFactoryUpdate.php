@@ -75,27 +75,18 @@ class FieldFactoryUpdate extends FieldFactory
 
                 $relationship = $entry->{$argument}();
 
-                // remove old entries
                 if ($relationship instanceof HasMany) {
-                    // set foreign key to null for all entries that are not in the new list of entries to connect.
                     $fkPropertyColumn = $relationship->getForeignKeyName();
                     call_user_func("{$hasMany[$argument]->getType()}::where", $fkPropertyColumn, $entry->id)
                         ->whereNotIn('id', $ids)
                         ->update([$fkPropertyColumn => null]);
-                }
 
-                if ($relationship instanceof BelongsToMany) {
-                    $relationship->detach();
-                }
-
-                // connect new entries
-                foreach ($ids as $id) {
-                    if ($relationship instanceof HasMany) {
-                        $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
-                    }
-                    if ($relationship instanceof BelongsToMany) {
-                        $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
-                    }
+                    // connect new entries
+                    $models = call_user_func("{$hasMany[$argument]->getType()}::whereIn", 'id', $ids)
+                        ->get();
+                    $relationship->saveMany($models);
+                } elseif ($relationship instanceof BelongsToMany) {
+                    $relationship->sync($ids);
                 }
             }
 
@@ -123,10 +114,12 @@ class FieldFactoryUpdate extends FieldFactory
                 }
             }
 
-            // save entry
+            // update timestamps
             if ($entry->timestamps) {
                 $entry->updateTimestamps();
             }
+
+            // save entry
             $success = $entry->update();
 
             // dispatch updated event
