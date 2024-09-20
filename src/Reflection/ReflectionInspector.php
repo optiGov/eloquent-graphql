@@ -58,9 +58,7 @@ class ReflectionInspector
             ->filter(fn ($property) => ! $property->isPrimitiveType())
             ->filter(fn ($property) => ! str_contains($property->getType(), '\\'))
             ->each(function (ReflectionProperty $property) use ($namespace) {
-                $prefix = $property->isNullable() ? '?' : '';
-                $postfix = $property->isArrayType() ? '[]' : '';
-                $property->setType($prefix.$namespace.'\\'.$property->getType().$postfix);
+                $property->setType($namespace.'\\'.$property->getType());
             });
 
         return $properties;
@@ -77,7 +75,7 @@ class ReflectionInspector
 
         // match properties
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)? ?(@computed)? ?(@eager-load-disabled)?/m';
+            $regex = '/ ?\*? ?@property(-read|-write)? (Collection<)?(\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?)>? (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)? ?(@computed)? ?(@eager-load-disabled)?/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
@@ -88,17 +86,23 @@ class ReflectionInspector
                     default => ReflectionProperty::KIND_DEFAULT
                 };
 
+                $isNullable = str_starts_with($matches[3][0], '?');
+                $isArray = str_ends_with($matches[3][0], '[]');
+                $isCollection = $matches[2][0] === 'Collection<';
+
                 $textProperties->add(
                     (new ReflectionProperty())
-                        ->setName(substr($matches[6][0], 1))
-                        ->setType($matches[2][0])
+                        ->setName(substr($matches[7][0], 1))
+                        ->setType($matches[4][0])
+                        ->setIsNullable($isNullable)
+                        ->setIsArrayType($isArray || $isCollection)
                         ->setKind($kind)
                         ->setHasDefaultValue(false)
-                        ->setHasPagination($matches[8][0] === '@paginate')
-                        ->setHasFilters($matches[9][0] === '@filterable')
-                        ->setHasOrder($matches[10][0] === '@orderable')
-                        ->setIsComputed($matches[11][0] === '@computed')
-                        ->setEagerLoadDisabled($matches[12][0] === '@eager-load-disabled')
+                        ->setHasPagination($matches[9][0] === '@paginate')
+                        ->setHasFilters($matches[10][0] === '@filterable')
+                        ->setHasOrder($matches[11][0] === '@orderable')
+                        ->setIsComputed($matches[12][0] === '@computed')
+                        ->setEagerLoadDisabled($matches[13][0] === '@eager-load-disabled')
                 );
             }
         }
