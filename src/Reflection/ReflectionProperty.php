@@ -55,6 +55,11 @@ class ReflectionProperty
      */
     private bool $isComputed = false;
 
+    /**
+     * Determines whether eager loading is disabled.
+     */
+    private bool $eagerLoadDisabled = false;
+
     public function isNullable(): bool
     {
         return str_starts_with($this->type, '?');
@@ -231,6 +236,24 @@ class ReflectionProperty
     public function setIsComputed(bool $isComputed): ReflectionProperty
     {
         $this->isComputed = $isComputed;
+
+        return $this;
+    }
+
+    /**
+     * Returns whether eager loading is disabled.
+     */
+    public function isEagerLoadDisabled(): bool
+    {
+        return $this->eagerLoadDisabled;
+    }
+
+    /**
+     * Sets whether eager loading is disabled.
+     */
+    public function setEagerLoadDisabled(bool $eagerLoadDisabled): ReflectionProperty
+    {
+        $this->eagerLoadDisabled = $eagerLoadDisabled;
 
         return $this;
     }

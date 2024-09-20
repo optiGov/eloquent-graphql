@@ -77,7 +77,7 @@ class ReflectionInspector
 
         // match properties
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)? ?(@computed)?/m';
+            $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)? ?(@computed)? ?(@eager-load-disabled)?/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
@@ -98,6 +98,7 @@ class ReflectionInspector
                         ->setHasFilters($matches[9][0] === '@filterable')
                         ->setHasOrder($matches[10][0] === '@orderable')
                         ->setIsComputed($matches[11][0] === '@computed')
+                        ->setEagerLoadDisabled($matches[12][0] === '@eager-load-disabled')
                 );
             }
         }
