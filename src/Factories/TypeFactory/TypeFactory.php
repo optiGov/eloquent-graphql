@@ -162,6 +162,7 @@ class TypeFactory
 
         $this->type = new ObjectType([
             'name' => $this->name,
+            'model' => $this->model,
             'description' => $this->description,
             'fields' => function () use (&$fields) {
                 return $fields->toArray();
