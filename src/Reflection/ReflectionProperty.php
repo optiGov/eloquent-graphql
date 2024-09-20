@@ -21,6 +21,16 @@ class ReflectionProperty
     private string $type = '';
 
     /**
+     * Determines whether the property is nullable.
+     */
+    private bool $isNullable = false;
+
+    /**
+     * Determines whether the property is an array type.
+     */
+    private bool $isArrayType = false;
+
+    /**
      * Kind of the property (default, read or write).
      */
     private string $kind = ReflectionProperty::KIND_DEFAULT;
@@ -60,11 +70,6 @@ class ReflectionProperty
      */
     private bool $eagerLoadDisabled = false;
 
-    public function isNullable(): bool
-    {
-        return str_starts_with($this->type, '?');
-    }
-
     public function getName(): string
     {
         return $this->name;
@@ -79,9 +84,7 @@ class ReflectionProperty
 
     public function getType(): string
     {
-        $type = ltrim($this->type, '?');
-
-        return rtrim($type, '[]');
+        return $this->type;
     }
 
     public function isPrimitiveType(): bool
@@ -95,6 +98,30 @@ class ReflectionProperty
     public function setType(string $type): ReflectionProperty
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function isNullable(): bool
+    {
+        return $this->isNullable;
+    }
+
+    public function setIsNullable(bool $isNullable): ReflectionProperty
+    {
+        $this->isNullable = $isNullable;
+
+        return $this;
+    }
+
+    public function isArrayType(): bool
+    {
+        return $this->isArrayType;
+    }
+
+    public function setIsArrayType(bool $isArray): ReflectionProperty
+    {
+        $this->isArrayType = $isArray;
 
         return $this;
     }
@@ -121,11 +148,6 @@ class ReflectionProperty
         $this->defaultValue = $defaultValue;
 
         return $this;
-    }
-
-    public function isArrayType(): bool
-    {
-        return str_ends_with($this->type, '[]');
     }
 
     /**
