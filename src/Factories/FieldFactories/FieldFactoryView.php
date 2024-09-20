@@ -4,8 +4,6 @@ namespace EloquentGraphQL\Factories\FieldFactories;
 
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
-use GraphQL\Type\Definition\ListOfType;
-use GraphQL\Type\Definition\NonNull;
 use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Type\Definition\Type;
 use ReflectionException;
@@ -29,12 +27,19 @@ class FieldFactoryView extends FieldFactory
     {
         return function ($_, array $args, $context, ResolveInfo $info) {
 
-            $fieldSelection = $info->getFieldSelection(10);
-            $returnType = $this->buildReturnType();
-            $relations = $this->getQueriedRelations($fieldSelection, $returnType);
+            // get eager loading constraints
+            $fieldSelection = $info->getFieldSelection(100);
+            $returnType = $this->service->typeFactory($this->model)->build();
 
-            // $entry = call_user_func("{$this->model}::find", $args['id']);
-            $entry = call_user_func("{$this->model}::with", $relations)->find($args['id']);
+            $eagerLoadingConstraints = (new EagerLoadingConstraintBuilder())
+                ->service($this->service)
+                ->fieldSelection($fieldSelection)
+                ->returnType($returnType)
+                ->resolveInfo($info)
+                ->buildRelationConstraints();
+
+            // apply eager loading constraints to query and get entry
+            $entry = call_user_func("{$this->model}::with", $eagerLoadingConstraints)->find($args['id']);
 
             // return null if entry does not exist
             if (! $entry) {
@@ -46,58 +51,6 @@ class FieldFactoryView extends FieldFactory
 
             return $entry;
         };
-    }
-
-    private function getQueriedRelations(array $fieldSelection, Type $returnType, string $prefix = ''): array
-    {
-        // find the relations that are queried
-        $returnTypeFields = $returnType->getFields();
-        $returnTypeRelations = array_filter($returnTypeFields, fn (array $field) => array_key_exists('isRelation', $field->config));
-
-        $fieldSelectionNames = array_keys($fieldSelection);
-        $returnTypeRelationNames = array_keys($returnTypeRelations);
-        $queriedRelations = array_intersect($fieldSelectionNames, $returnTypeRelationNames);
-
-        foreach ($queriedRelations as $key) {
-            // get the inner type of the relation (the node type)
-            $relation = $returnTypeRelations[$key];
-            $relationType = $relation->config['type'];
-
-            if ($relationType instanceof NonNull) {
-                $relationType = $relationType->getWrappedType();
-            }
-
-            $relationFields = $relationType->getFields();
-            $edgesType = $relationFields['edges']->config['type'];
-
-            if ($edgesType instanceof NonNull) {
-                $edgesType = $edgesType->getWrappedType();
-            }
-            if ($edgesType instanceof ListOfType) {
-                $edgesType = $edgesType->getWrappedType();
-            }
-            if ($edgesType instanceof NonNull) {
-                $edgesType = $edgesType->getWrappedType();
-            }
-
-            $nodeType = $edgesType->getFields()['node']->config['type'];
-
-            if ($nodeType instanceof NonNull) {
-                $nodeType = $nodeType->getWrappedType();
-            }
-
-            // get the child relations of the current relation and merge them with the current relations
-            $childRelations = $this->getQueriedRelations(
-                $fieldSelection[$key]['edges']['node'],
-                $nodeType,
-                $key.'.'
-            );
-
-            $queriedRelations = array_merge($queriedRelations, $childRelations);
-        }
-
-        // add the prefix to the relations to match the eager loading format and return the result
-        return array_map(fn ($key) => $prefix.$key, $queriedRelations);
     }
 
     /**

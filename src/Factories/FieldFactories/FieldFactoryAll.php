@@ -5,6 +5,7 @@ namespace EloquentGraphQL\Factories\FieldFactories;
 use Closure;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Factories\Pagination\PaginatorQuery;
+use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Support\Collection;
 use ReflectionException;
@@ -53,7 +54,7 @@ class FieldFactoryAll extends FieldFactory
      */
     protected function buildResolve(): Closure
     {
-        return function ($parent, $args) {
+        return function ($_, array $args, $context, ResolveInfo $info) {
             // check if any entry can be viewed
             $this->service->security()->assertCanViewAny($this->model);
 
@@ -63,8 +64,19 @@ class FieldFactoryAll extends FieldFactory
             $filter = $args['filter'] ?? null;
             $order = $args['order'] ?? null;
 
-            // get entries
-            $builder = call_user_func("{$this->model}::query");
+            // get eager loading constraints
+            $fieldSelection = $info->getFieldSelection(100);
+            $returnType = $this->service->typeFactory($this->model)->build();
+
+            $eagerLoadingConstraints = (new EagerLoadingConstraintBuilder())
+                ->service($this->service)
+                ->fieldSelection($fieldSelection)
+                ->returnType($returnType)
+                ->resolveInfo($info)
+                ->buildRelationConstraints();
+
+            // apply eager loading constraints to query and get query builder
+            $builder = call_user_func("{$this->model}::with", $eagerLoadingConstraints);
 
             // use table.* to prevent issues with joins
             $builder->select($builder->getModel()->getTable().'.*');
