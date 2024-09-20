@@ -188,16 +188,29 @@ class PaginatorQuery extends Paginator
         }
     }
 
+    public function getQueryBuilder(): Builder
+    {
+        return $this->queryBuilder;
+    }
+
     public function get(): Collection
     {
+        // check if data is set manually (through eager loading) and return it
+        if ($this->entries) {
+            return $this->entries;
+        }
+
+        // apply limit
         if ($this->limit) {
             $this->queryBuilder->limit($this->limit);
         }
 
+        // apply offset
         if ($this->offset) {
             $this->queryBuilder->offset($this->offset);
         }
 
+        // return the result
         return $this->queryBuilder->get();
     }
 }
