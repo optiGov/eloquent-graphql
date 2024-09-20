@@ -41,10 +41,9 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
 
                 // get entries
                 $fieldIsMethod = method_exists($parent, $this->fieldName);
-                $needToBuildQuery = $limit || $offset || $filter || $order;
 
                 // only resolve query builder if we need to paginate or filter
-                if ($fieldIsMethod && $needToBuildQuery) {
+                if ($fieldIsMethod) {
                     $builderOrIterable = $parent->{$this->fieldName}();
                 } else {
                     $builderOrIterable = $parent->{$this->fieldName};
