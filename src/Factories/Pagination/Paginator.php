@@ -22,6 +22,8 @@ abstract class Paginator
 
     protected EloquentGraphQLService $service;
 
+    protected mixed $entries = null;
+
     protected string $className;
 
     public function offset(?int $n): static
@@ -140,6 +142,13 @@ abstract class Paginator
     protected function applyOrder(array $order): void
     {
         throw new GraphQLError('Ordering is not supported for this paginator.');
+    }
+
+    public function setEntries(mixed $entries): static
+    {
+        $this->entries = $entries;
+
+        return $this;
     }
 
     abstract public function count(): int;
