@@ -190,6 +190,16 @@ class PaginatorQuery extends Paginator
 
     public function getQueryBuilder(): Builder
     {
+        // apply limit
+        if ($this->limit) {
+            $this->queryBuilder->limit($this->limit);
+        }
+
+        // apply offset
+        if ($this->offset) {
+            $this->queryBuilder->offset($this->offset);
+        }
+
         return $this->queryBuilder;
     }
 
