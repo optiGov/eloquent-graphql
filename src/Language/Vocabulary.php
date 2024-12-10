@@ -15,4 +15,21 @@ interface Vocabulary
     public function delete(string $word): string;
 
     public function all(string $word): string;
+
+    public function errorUnauthorizedFilter(): string;
+
+    public function errorUnauthorizedFilterProperty(string $property): string;
+
+    public function errorUnauthorizedCreate(): string;
+
+    public function errorUnauthorizedDelete(): string;
+
+    public function errorUnauthorizedUpdate(): string;
+
+    public function errorUnauthorizedView(): string;
+
+    public function errorUnauthorizedViewProperty(): string;
+
+    public function errorUnauthorizedViewAny(): string;
+
 }

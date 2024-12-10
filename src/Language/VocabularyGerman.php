@@ -159,4 +159,44 @@ class VocabularyGerman implements Vocabulary
     {
         return 'alle'.ucwords($this->pluralize($word));
     }
+
+    public function errorUnauthorizedFilter(): string
+    {
+        return 'Sie sind nicht berechtigt, diesen Filter zu verwenden.';
+    }
+
+    public function errorUnauthorizedFilterProperty(string $property): string
+    {
+        return 'Sie sind nicht berechtigt, die Eigenschaft ['.$property.'] zu filtern.';
+    }
+
+    public function errorUnauthorizedCreate(): string
+    {
+        return 'Sie sind nicht berechtigt, diesen Eintrag zu erstellen.';
+    }
+
+    public function errorUnauthorizedDelete(): string
+    {
+        return 'Sie sind nicht berechtigt, diesen Eintrag zu löschen.';
+    }
+
+    public function errorUnauthorizedUpdate(): string
+    {
+        return 'Sie sind nicht berechtigt, diesen Eintrag zu bearbeiten.';
+    }
+
+    public function errorUnauthorizedView(): string
+    {
+        return 'Sie sind nicht berechtigt, diesen Eintrag anzusehen.';
+    }
+
+    public function errorUnauthorizedViewProperty(): string
+    {
+        return 'Sie sind nicht berechtigt, diese Eigenschaft anzusehen.';
+    }
+
+    public function errorUnauthorizedViewAny(): string
+    {
+        return 'Sie sind nicht berechtigt, diese Einträge anzusehen.';
+    }
 }

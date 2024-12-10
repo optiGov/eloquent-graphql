@@ -88,4 +88,44 @@ class VocabularyEnglish implements Vocabulary
     {
         return 'all'.ucwords($this->pluralize($word));
     }
+
+    public function errorUnauthorizedFilter(): string
+    {
+        return 'You are not authorized to filter this type';
+    }
+
+    public function errorUnauthorizedFilterProperty(string $property): string
+    {
+        return 'You are not authorized to filter the property ['.$property.'].';
+    }
+
+    public function errorUnauthorizedCreate(): string
+    {
+        return 'You are not authorized to create this model.';
+    }
+
+    public function errorUnauthorizedDelete(): string
+    {
+        return 'You are not authorized to delete this model.';
+    }
+
+    public function errorUnauthorizedUpdate(): string
+    {
+        return 'You are not authorized to update this model.';
+    }
+
+    public function errorUnauthorizedView(): string
+    {
+        return 'You are not authorized to view this model.';
+    }
+
+    public function errorUnauthorizedViewProperty(): string
+    {
+        return 'You are not authorized to view this property.';
+    }
+
+    public function errorUnauthorizedViewAny(): string
+    {
+        return 'You are not authorized to view any model.';
+    }
 }
