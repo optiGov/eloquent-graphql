@@ -28,12 +28,13 @@ class EloquentGraphQLService
         $this->vocab = new VocabularyEnglish();
         $this->typeFactories = new Collection();
         $this->scalarTypes = new Collection();
-        $this->securityGuard = new SecurityGuard($this);
+        $this->securityGuard = new SecurityGuard($this, $this->vocab);
     }
 
     public function setVocab(Vocabulary $vocab): EloquentGraphQLService
     {
         $this->vocab = $vocab;
+        $this->securityGuard->setVocab($vocab);
 
         return $this;
     }

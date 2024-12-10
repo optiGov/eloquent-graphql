@@ -22,6 +22,13 @@ class SecurityGuard
         $this->vocab = $vocab;
     }
 
+    public function setVocab(Vocabulary $vocab): static
+    {
+        $this->vocab = $vocab;
+
+        return $this;
+    }
+
     /**
      * Checks if the user is authorized to perform the given ability on the given model.
      *
