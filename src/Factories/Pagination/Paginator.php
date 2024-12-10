@@ -115,7 +115,7 @@ abstract class Paginator
                 }
             });
 
-        // verify all 'and' and 'or' filters are filterable
+        // verify all 'and', 'or' and 'not' filters are filterable
         if (Arr::exists($filter, 'and')) {
             foreach ($filter['and'] as $andFilter) {
                 $this->verifyFilter($andFilter, $className);
@@ -125,6 +125,9 @@ abstract class Paginator
             foreach ($filter['or'] as $orFilter) {
                 $this->verifyFilter($orFilter, $className);
             }
+        }
+        if (Arr::exists($filter, 'not')) {
+            $this->verifyFilter($filter['not'], $className);
         }
     }
 
