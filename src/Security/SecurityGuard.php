@@ -3,20 +3,23 @@
 namespace EloquentGraphQL\Security;
 
 use EloquentGraphQL\Exceptions\GraphQLError;
+use EloquentGraphQL\Language\Vocabulary;
 use EloquentGraphQL\Reflection\ReflectionProperty;
 use EloquentGraphQL\Services\EloquentGraphQLService;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Support\Collection;
-use ReflectionException;
 
 class SecurityGuard
 {
     private EloquentGraphQLService $service;
 
-    public function __construct(EloquentGraphQLService $service)
+    private Vocabulary $vocab;
+
+    public function __construct(EloquentGraphQLService $service, Vocabulary $vocab)
     {
         $this->service = $service;
+        $this->vocab = $vocab;
     }
 
     /**
@@ -36,19 +39,16 @@ class SecurityGuard
     /**
      * @throws BindingResolutionException
      * @throws GraphQLError
-     * @throws ReflectionException
      */
     public function assertCanFilter(string $className, array $filter): void
     {
         if (! $this->check('filter', $className, [$filter])) {
-            $typeName = $this->service->typeFactory($className)->getName();
-            throw new GraphQLError('You are not authorized to filter the type ['.$typeName.'].');
+            throw new GraphQLError($this->vocab->errorUnauthorizedFilter());
         }
 
         foreach ($filter as $property => $value) {
             if (! $this->check('filterProperty', $className, [$property])) {
-                $typeName = $this->service->typeFactory($className)->getName();
-                throw new GraphQLError('You are not authorized to filter the property ['.$property.'] of the type ['.$typeName.'].');
+                throw new GraphQLError($this->vocab->errorUnauthorizedFilterProperty($property));
             }
         }
     }
@@ -60,7 +60,7 @@ class SecurityGuard
     public function assertCanCreate(string $className, array $data): void
     {
         if (! $this->check('create', $className, $data)) {
-            throw new GraphQLError('You are not authorized to create this model.');
+            throw new GraphQLError($this->vocab->errorUnauthorizedCreate());
         }
     }
 
@@ -71,7 +71,7 @@ class SecurityGuard
     public function assertCanDelete(object $model): void
     {
         if (! $this->check('delete', $model::class, [$model])) {
-            throw new GraphQLError('You are not authorized to delete this model.');
+            throw new GraphQLError($this->vocab->errorUnauthorizedDelete());
         }
     }
 
@@ -82,7 +82,7 @@ class SecurityGuard
     public function assertCanUpdate(object $model, array $data): void
     {
         if (! $this->check('update', $model::class, [$model, $data])) {
-            throw new GraphQLError('You are not authorized to update this model.');
+            throw new GraphQLError($this->vocab->errorUnauthorizedUpdate());
         }
     }
 
@@ -93,7 +93,7 @@ class SecurityGuard
     public function assertCanViewProperty(object $model, ReflectionProperty $property): void
     {
         if (! $this->check('viewProperty', $model::class, [$model, $property->getName()])) {
-            throw new GraphQLError('You are not authorized to view this property.');
+            throw new GraphQLError($this->vocab->errorUnauthorizedViewProperty());
         }
     }
 
@@ -104,20 +104,18 @@ class SecurityGuard
     public function assertCanView(object $model): void
     {
         if (! $this->check('view', $model::class, [$model])) {
-            throw new GraphQLError('You are not authorized to view this model.');
+            throw new GraphQLError($this->vocab->errorUnauthorizedView());
         }
     }
 
     /**
      * @throws BindingResolutionException
      * @throws GraphQLError
-     * @throws ReflectionException
      */
     public function assertCanViewAny(string $className): void
     {
         if (! $this->check('viewAny', $className)) {
-            $typeName = $this->service->typeFactory($className)->getName();
-            throw new GraphQLError('You are not authorized to view any models of the type ['.$typeName.'].');
+            throw new GraphQLError($this->vocab->errorUnauthorizedViewAny());
         }
     }
 
