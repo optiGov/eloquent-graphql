@@ -127,9 +127,9 @@ class PaginatorQuery extends Paginator
                     }
 
                     // handle relation filter type
-                    $tableName = $query->getModel()->{$field}()->getRelated()->getTable();
-                    $query->whereHas($qualifiedField, function (Builder $query) use ($filterInput, $tableName, $level) {
-                        $this->applyFilterFieldsOnQuery($filterInput, $query, $tableName, $level + 1);
+                    $modelTableName = $query->getModel()->{$field}()->getRelated()->getTable();
+                    $query->whereHas($qualifiedField, function (Builder $query) use ($filterInput, $modelTableName, $level) {
+                        $this->applyFilterFieldsOnQuery($filterInput, $query, $modelTableName, $level + 1);
                     });
                 }
             }
