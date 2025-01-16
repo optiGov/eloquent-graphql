@@ -77,6 +77,9 @@ class FieldFactoryCreate extends FieldFactory
             // create the actual entry
             $entry->save();
 
+            // reload the data from the database to get values inserted by triggers or defaults
+            $entry->refresh();
+
             // connect one-to-one relations
             foreach ($relationsToAddHasOne as $field => $id) {
                 if ($id === null) {
