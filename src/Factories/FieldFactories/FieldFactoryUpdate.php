@@ -106,8 +106,12 @@ class FieldFactoryUpdate extends FieldFactory
                 } else {
                     // connect new entries
                     if ($relationship instanceof HasOne) {
-                        $relationship->update([$relationship->getForeignKeyName() => null]);
-                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
+                        $connectedModel = $relationship->first();
+                        $newModelToConnect = call_user_func("{$hasOne[$argument]->getType()}::find", $id);
+                        if (! $connectedModel || $connectedModel->isNot($newModelToConnect)) {
+                            $relationship->update([$relationship->getForeignKeyName() => null]);
+                            $relationship->save($newModelToConnect);
+                        }
                     }
                     if ($relationship instanceof BelongsTo) {
                         $relationship->associate(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
