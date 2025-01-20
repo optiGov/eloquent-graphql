@@ -98,7 +98,7 @@ class FieldFactoryUpdate extends FieldFactory
                 if ($id === null) {
                     // disconnect old entries
                     if ($relationship instanceof HasOne) {
-                        $relationship->delete();
+                        $relationship->update([$relationship->getForeignKeyName() => null]);
                     }
                     if ($relationship instanceof BelongsTo) {
                         $relationship->dissociate();
@@ -106,6 +106,7 @@ class FieldFactoryUpdate extends FieldFactory
                 } else {
                     // connect new entries
                     if ($relationship instanceof HasOne) {
+                        $relationship->update([$relationship->getForeignKeyName() => null]);
                         $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
                     }
                     if ($relationship instanceof BelongsTo) {
