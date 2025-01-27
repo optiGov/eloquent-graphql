@@ -107,6 +107,10 @@ class PaginatorQuery extends Paginator
                     }
                 } elseif ($operator === 'ne') {
                     $query->where($qualifiedField, '!=', $value);
+                } elseif ($operator === 'date') {
+                    $query->whereDate($qualifiedField, $value);
+                } elseif ($operator === 'ndate') {
+                    $query->whereDate($qualifiedField, '!=', $value);
                 } elseif ($operator === 'lt') {
                     $query->where($qualifiedField, '<', $value);
                 } elseif ($operator === 'gt') {
@@ -117,6 +121,8 @@ class PaginatorQuery extends Paginator
                     $query->where($qualifiedField, '>=', $value);
                 } elseif ($operator === 'like') {
                     $query->where($qualifiedField, 'like', $value);
+                } elseif ($operator === 'nlike') {
+                    $query->where($qualifiedField, 'not like', $value);
                 } elseif ($operator === 'in') {
                     $query->whereIn($qualifiedField, $value);
                 } elseif ($operator === 'nin') {
