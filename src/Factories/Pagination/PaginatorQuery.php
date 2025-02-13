@@ -97,7 +97,10 @@ class PaginatorQuery extends Paginator
         unset($filter['not']);
 
         foreach ($filter as $field => $filterInput) {
-            $qualifiedField = $tableName ? $tableName.'.'.$field : $field;
+            // get qualified field name to prevent issues with joins (either using the provided table name or the model's table name)
+            $baseTableName = $tableName ?? $query->getModel()->getTable();
+            $qualifiedField = $baseTableName ? $baseTableName.'.'.$field : $field;
+            
             foreach ($filterInput as $operator => $value) {
                 if ($operator === 'eq') {
                     if ($value === null) {
@@ -133,8 +136,9 @@ class PaginatorQuery extends Paginator
                     }
 
                     // handle relation filter type
+                    $relatedField = $tableName ? $tableName.'.'.$field : $field;
                     $modelTableName = $query->getModel()->{$field}()->getRelated()->getTable();
-                    $query->whereHas($qualifiedField, function (Builder $query) use ($filterInput, $modelTableName, $level) {
+                    $query->whereHas($relatedField, function (Builder $query) use ($filterInput, $modelTableName, $level) {
                         $this->applyFilterFieldsOnQuery($filterInput, $query, $modelTableName, $level + 1);
                     });
                 }
