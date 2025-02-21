@@ -4,6 +4,7 @@ namespace EloquentGraphQL\Factories\Pagination;
 
 use EloquentGraphQL\Exceptions\GraphQLError;
 use Illuminate\Contracts\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -100,7 +101,7 @@ class PaginatorQuery extends Paginator
             // get qualified field name to prevent issues with joins (either using the provided table name or the model's table name)
             $baseTableName = $tableName ?? $query->getModel()->getTable();
             $qualifiedField = $baseTableName ? $baseTableName.'.'.$field : $field;
-            
+
             foreach ($filterInput as $operator => $value) {
                 if ($operator === 'eq') {
                     if ($value === null) {
@@ -131,14 +132,14 @@ class PaginatorQuery extends Paginator
                 } elseif ($operator === 'nin') {
                     $query->whereNotIn($qualifiedField, $value);
                 } else {
-                    if ($level >= 1) {
+                    if ($level >= 2) {
                         throw new GraphQLError('Nested filtering is only allowed up to one level.');
                     }
 
                     // handle relation filter type
-                    $relatedField = $tableName ? $tableName.'.'.$field : $field;
                     $modelTableName = $query->getModel()->{$field}()->getRelated()->getTable();
-                    $query->whereHas($relatedField, function (Builder $query) use ($filterInput, $modelTableName, $level) {
+
+                    $query->whereHas($field, function (Builder $query) use ($filterInput, $modelTableName, $level) {
                         $this->applyFilterFieldsOnQuery($filterInput, $query, $modelTableName, $level + 1);
                     });
                 }
@@ -158,7 +159,7 @@ class PaginatorQuery extends Paginator
     /**
      * @throws GraphQLError
      */
-    private function applyOrderOnQuery(array $order, Builder $query, ?string $tableName = null, int $level = 0): void
+    private function applyOrderOnQuery(array $order, Builder $query, ?string $tableName = null, int $level = 0, ?Model $baseModel = null): void
     {
         if (count($order) > 1) {
             throw new GraphQLError('Order must have exactly one field.');
@@ -181,19 +182,20 @@ class PaginatorQuery extends Paginator
 
                 $query->orderBy($field, $direction);
             } else {
-                if ($level >= 1) {
+                if ($level >= 2) {
                     throw new GraphQLError('Nested ordering is only allowed up to one level.');
                 }
 
                 // handle relation order type
-                $relation = $query->getModel()->{$field}();
-                $parentTable = $query->getModel()->getTable();
+                $baseModel = $baseModel ?? $query->getModel();
+                $relation = $baseModel->{$field}();
+                $parentTable = $baseModel->getTable();
                 $foreignTable = $relation->getRelated()->getTable();
                 $parentKey = $relation->getForeignKeyName();
                 $foreignKey = $relation->getParent()->getKeyName();
 
                 $query->join($foreignTable, $parentTable.'.'.$parentKey, '=', $foreignTable.'.'.$foreignKey);
-                $this->applyOrderOnQuery($orderInput, $query, $foreignTable, $level + 1);
+                $this->applyOrderOnQuery($orderInput, $query, $foreignTable, $level + 1, $baseModel);
             }
         }
     }
