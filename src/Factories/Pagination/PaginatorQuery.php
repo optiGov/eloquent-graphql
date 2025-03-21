@@ -186,16 +186,29 @@ class PaginatorQuery extends Paginator
                     throw new GraphQLError('Nested ordering is only allowed up to one level.');
                 }
 
-                // handle relation order type
-                $baseModel = $baseModel ?? $query->getModel();
-                $relation = $baseModel->{$field}();
-                $parentTable = $baseModel->getTable();
-                $foreignTable = $relation->getRelated()->getTable();
-                $parentKey = $relation->getForeignKeyName();
-                $foreignKey = $relation->getParent()->getKeyName();
+                foreach ($orderInput as $innerField => $innerOrderInput) {
+                    if(!Arr::has($innerOrderInput, 'order')) {
+                        throw new GraphQLError('Nested ordering is only allowed up to one level.');
+                    }
 
-                $query->join($foreignTable, $parentTable.'.'.$parentKey, '=', $foreignTable.'.'.$foreignKey);
-                $this->applyOrderOnQuery($orderInput, $query, $foreignTable, $level + 1, $baseModel);
+                    $direction = Str::lower($innerOrderInput['order']);
+
+                    if (! in_array($direction, $allowedDirections)) {
+                        throw new GraphQLError('Order direction must be one of ['.implode(', ', $allowedDirections).']');
+                    }
+
+                    // handle relation order type
+                    $baseModel = $baseModel ?? $query->getModel();
+                    $relation = $baseModel->{$field}();
+                    $parentTable = $baseModel->getTable();
+                    $foreignTable = $relation->getRelated()->getTable();
+                    $parentKey = $relation->getForeignKeyName();
+                    $foreignKey = $relation->getParent()->getKeyName();
+                    $innerField = '`'.str_replace('`', '', $innerField).'`'; // sanitize column name
+
+                    $sql = "(SELECT $innerField FROM `$foreignTable` WHERE `$foreignTable`.`$foreignKey` = `$parentTable`.`$parentKey` LIMIT 1) $direction";
+                    $query->orderByRaw($sql);
+                }
             }
         }
     }
