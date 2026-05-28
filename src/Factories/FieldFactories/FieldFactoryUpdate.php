@@ -98,7 +98,8 @@ class FieldFactoryUpdate extends FieldFactory
                 if ($id === null) {
                     // disconnect old entries
                     if ($relationship instanceof HasOne) {
-                        $relationship->update([$relationship->getForeignKeyName() => null]);
+                        $fk = $relationship->getForeignKeyName();
+                        $relationship->get()->each(fn ($model) => $model->update([$fk => null]));
                     }
                     if ($relationship instanceof BelongsTo) {
                         $relationship->dissociate();
