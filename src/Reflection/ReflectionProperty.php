@@ -95,6 +95,23 @@ class ReflectionProperty
         };
     }
 
+    public function isEnumType(): bool
+    {
+        if ($this->isPrimitiveType()) {
+            return false;
+        }
+
+        $type = $this->getType();
+
+        if (! class_exists($type)) {
+            return false;
+        }
+
+        $reflection = new \ReflectionClass($type);
+
+        return $reflection->isEnum();
+    }
+
     public function setType(string $type): ReflectionProperty
     {
         $this->type = $type;
