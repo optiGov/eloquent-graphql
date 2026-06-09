@@ -41,12 +41,17 @@ class ReflectionInspector
 
         $doc = $reflection->getDocComment();
         if ($doc === false) {
-            return new Collection();
+            self::$cache['classDoc'][$class] = new Collection();
+
+            return self::$cache['classDoc'][$class];
         }
 
         $properties = static::parsePropertiesFromClassDoc($doc);
+        $qualified = static::fullQualifyProperties($properties, $reflection->getNamespaceName());
 
-        return static::fullQualifyProperties($properties, $reflection->getNamespaceName());
+        self::$cache['classDoc'][$class] = $qualified;
+
+        return $qualified;
     }
 
     /**
