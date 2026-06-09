@@ -88,6 +88,11 @@ class FieldFactoryCreate extends FieldFactory
 
                 $relationship = $entry->{$field}();
                 $model = call_user_func("{$hasOne[$field]->getType()}::find", $id);
+
+                if ($model === null) {
+                    continue;
+                }
+
                 $relationship->save($model);
             }
 
@@ -98,11 +103,17 @@ class FieldFactoryCreate extends FieldFactory
                 }
                 $relationship = $entry->{$argument}();
                 foreach ($ids as $id) {
+                    $relatedModel = call_user_func("{$hasMany[$argument]->getType()}::find", $id);
+
+                    if ($relatedModel === null) {
+                        continue;
+                    }
+
                     if ($relationship instanceof HasMany) {
-                        $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
+                        $relationship->save($relatedModel);
                     }
                     if ($relationship instanceof BelongsToMany) {
-                        $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
+                        $relationship->save($relatedModel);
                     }
                 }
             }
