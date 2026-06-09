@@ -7,10 +7,12 @@ use EloquentGraphQL\Events\GraphQLUpdatedModel;
 use EloquentGraphQL\Events\GraphQLUpdatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use GraphQL\Type\Definition\Type;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 use ReflectionException;
 
 class FieldFactoryUpdate extends FieldFactory
@@ -31,110 +33,173 @@ class FieldFactoryUpdate extends FieldFactory
         $hasOne = $this->service->typeFactory($this->model)->getHasOne();
         $hasMany = $this->service->typeFactory($this->model)->getHasMany();
 
-        return function ($_, $args) use ($hasMany, $hasOne) {
-            // get entry
+        return function ($_, $args) use ($hasOne, $hasMany) {
             $entry = call_user_func("{$this->model}::find", $args['id']);
 
-            // return false if entry does not exist
             if (! $entry) {
                 return false;
             }
 
-            // authorize
-            $this->service->security()->assertCanUpdate($entry, $args[$this->pureName]);
+            $input = $args[$this->pureName];
 
-            // dispatch updating event
+            $this->service->security()->assertCanUpdate($entry, $input);
             GraphQLUpdatingModel::dispatch($entry);
 
-            // store ids to other relations
-            $relationsToAddMany = [];
-            $relationsToAddOne = [];
-            foreach ($hasMany as $field => $value) {
-                if (array_key_exists($field, $args[$this->pureName])) {
-                    $relationsToAddMany[$field] = $args[$this->pureName][$field];
-                    unset($args[$this->pureName][$field]);
-                }
-            }
-            foreach ($hasOne as $field => $value) {
-                if (array_key_exists($field, $args[$this->pureName])) {
-                    $relationsToAddOne[$field] = $args[$this->pureName][$field];
-                    unset($args[$this->pureName][$field]);
-                }
-            }
+            [$manyRelations, $oneRelations, $scalarFields] = $this->separateRelations($input, $hasMany, $hasOne);
 
-            // update properties
-            foreach ($args[$this->pureName] as $property => $value) {
-                $entry->{$property} = $value;
-            }
+            $this->applyScalarFields($entry, $scalarFields);
+            $this->syncManyRelations($entry, $manyRelations, $hasMany);
+            $this->syncOneRelations($entry, $oneRelations, $hasOne);
 
-            // update relations
-            foreach ($relationsToAddMany as $argument => $ids) {
-                if ($ids === null) {
-                    continue;
-                }
-
-                $relationship = $entry->{$argument}();
-
-                if ($relationship instanceof HasMany) {
-                    $fkPropertyColumn = $relationship->getForeignKeyName();
-                    call_user_func("{$hasMany[$argument]->getType()}::where", $fkPropertyColumn, $entry->id)
-                        ->whereNotIn('id', $ids)
-                        ->update([$fkPropertyColumn => null]);
-
-                    // connect new entries
-                    $models = call_user_func("{$hasMany[$argument]->getType()}::whereIn", 'id', $ids)
-                        ->get();
-                    $relationship->saveMany($models);
-                } elseif ($relationship instanceof BelongsToMany) {
-                    $relationship->sync($ids);
-                }
-            }
-
-            foreach ($relationsToAddOne as $argument => $id) {
-                // get the relationship
-                $relationship = $entry->{$argument}();
-
-                // check if entries should be connected or disconnected
-                if ($id === null) {
-                    // disconnect old entries
-                    if ($relationship instanceof HasOne) {
-                        $fk = $relationship->getForeignKeyName();
-                        $relationship->get()->each(fn ($model) => $model->update([$fk => null]));
-                    }
-                    if ($relationship instanceof BelongsTo) {
-                        $relationship->dissociate();
-                    }
-                } else {
-                    // connect new entries
-                    if ($relationship instanceof HasOne) {
-                        $connectedModel = $relationship->first();
-                        $newModelToConnect = call_user_func("{$hasOne[$argument]->getType()}::find", $id);
-                        if (! $connectedModel || $connectedModel->isNot($newModelToConnect)) {
-                            $relationship->update([$relationship->getForeignKeyName() => null]);
-                            $relationship->save($newModelToConnect);
-                        }
-                    }
-                    if ($relationship instanceof BelongsTo) {
-                        $relationship->associate(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
-                    }
-                }
-            }
-
-            // update timestamps
             if ($entry->timestamps) {
                 $entry->updateTimestamps();
             }
 
-            // save entry
             $success = $entry->update();
 
-            // dispatch updated event
             if ($success) {
                 GraphQLUpdatedModel::dispatch($entry);
             }
 
             return $success;
         };
+    }
+
+    /**
+     * Splits the raw input array into three buckets:
+     * has-many relation IDs, has-one relation IDs, and plain scalar fields.
+     *
+     * @return array{0: array, 1: array, 2: array}
+     */
+    private function separateRelations(array $input, Collection $hasMany, Collection $hasOne): array
+    {
+        $manyRelations = [];
+        $oneRelations = [];
+        $scalarFields = $input;
+
+        foreach ($hasMany->keys() as $field) {
+            if (array_key_exists($field, $scalarFields)) {
+                $manyRelations[$field] = $scalarFields[$field];
+                unset($scalarFields[$field]);
+            }
+        }
+
+        foreach ($hasOne->keys() as $field) {
+            if (array_key_exists($field, $scalarFields)) {
+                $oneRelations[$field] = $scalarFields[$field];
+                unset($scalarFields[$field]);
+            }
+        }
+
+        return [$manyRelations, $oneRelations, $scalarFields];
+    }
+
+    /**
+     * Assigns scalar field values directly onto the model.
+     */
+    private function applyScalarFields(Model $entry, array $scalarFields): void
+    {
+        foreach ($scalarFields as $property => $value) {
+            $entry->{$property} = $value;
+        }
+    }
+
+    /**
+     * Syncs all has-many / belongs-to-many relations.
+     */
+    private function syncManyRelations(Model $entry, array $manyRelations, Collection $hasMany): void
+    {
+        foreach ($manyRelations as $field => $ids) {
+            if ($ids === null) {
+                continue;
+            }
+
+            $relationship = $entry->{$field}();
+            $relatedClass = $hasMany[$field]->getType();
+
+            if ($relationship instanceof HasMany) {
+                $this->syncHasMany($entry, $relationship, $relatedClass, $ids);
+            } elseif ($relationship instanceof BelongsToMany) {
+                $relationship->sync($ids);
+            }
+        }
+    }
+
+    /**
+     * Detaches entries no longer in $ids, then attaches the ones that are.
+     */
+    private function syncHasMany(Model $entry, HasMany $relationship, string $relatedClass, array $ids): void
+    {
+        $fk = $relationship->getForeignKeyName();
+
+        // Nullify the FK on entries that have been removed from the relation.
+        $relatedClass::where($fk, $entry->id)
+            ->whereNotIn('id', $ids)
+            ->update([$fk => null]);
+
+        // Attach the current set.
+        $relationship->saveMany(
+            $relatedClass::whereIn('id', $ids)->get()
+        );
+    }
+
+    /**
+     * Syncs all has-one / belongs-to relations.
+     */
+    private function syncOneRelations(Model $entry, array $oneRelations, Collection $hasOne): void
+    {
+        foreach ($oneRelations as $field => $id) {
+            $relationship = $entry->{$field}();
+            $relatedClass = $hasOne[$field]->getType();
+
+            if ($id === null) {
+                $this->disconnectOneRelation($relationship);
+            } else {
+                $this->connectOneRelation($relationship, $relatedClass, $id);
+            }
+        }
+    }
+
+    /**
+     * Removes the link for a has-one or belongs-to relation.
+     */
+    private function disconnectOneRelation(HasOne|BelongsTo $relationship): void
+    {
+        if ($relationship instanceof HasOne) {
+            $fk = $relationship->getForeignKeyName();
+            $relationship->get()->each(fn (Model $model) => $model->update([$fk => null]));
+        } elseif ($relationship instanceof BelongsTo) {
+            $relationship->dissociate();
+        }
+    }
+
+    /**
+     * Links the model identified by $id to a has-one or belongs-to relation.
+     * Does nothing if the target model does not exist.
+     */
+    private function connectOneRelation(HasOne|BelongsTo $relationship, string $relatedClass, int $id): void
+    {
+        if ($relationship instanceof HasOne) {
+            $newModel = $relatedClass::find($id);
+
+            if ($newModel === null) {
+                return;
+            }
+
+            $connectedModel = $relationship->first();
+            $alreadyLinked = $connectedModel && $connectedModel->is($newModel);
+
+            if (! $alreadyLinked) {
+                $relationship->update([$relationship->getForeignKeyName() => null]);
+                $relationship->save($newModel);
+            }
+        } elseif ($relationship instanceof BelongsTo) {
+            $newModel = $relatedClass::find($id);
+
+            if ($newModel !== null) {
+                $relationship->associate($newModel);
+            }
+        }
     }
 
     /**
