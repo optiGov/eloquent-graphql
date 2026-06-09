@@ -47,7 +47,11 @@ class ReflectionInspector
         }
 
         $properties = static::parsePropertiesFromClassDoc($doc);
-        $qualified = static::fullQualifyProperties($properties, $reflection->getNamespaceName());
+
+        $fileName = $reflection->getFileName();
+        $useMap   = $fileName !== false ? static::parseUseStatements($fileName) : [];
+
+        $qualified = static::fullQualifyProperties($properties, $reflection->getNamespaceName(), $useMap);
 
         self::$cache['classDoc'][$class] = $qualified;
 
@@ -55,18 +59,78 @@ class ReflectionInspector
     }
 
     /**
-     * Takes parsed properties and adds the full qualified name.
+     * Takes parsed properties and resolves every non-primitive, non-FQN type name
+     * to its fully-qualified class name.
+     *
+     * Resolution order:
+     *  1. Already FQN (contains "\") → kept as-is.
+     *  2. Found in the file's `use` statements → use the imported FQN.
+     *  3. Otherwise → prepend the model's own namespace (same-namespace shorthand).
+     *
+     * @param array<string, string> $useMap  short name → FQN, from parseUseStatements()
      */
-    private static function fullQualifyProperties(Collection $properties, string $namespace): Collection
+    private static function fullQualifyProperties(Collection $properties, string $namespace, array $useMap = []): Collection
     {
         $properties
             ->filter(fn ($property) => ! $property->isPrimitiveType())
             ->filter(fn ($property) => ! str_contains($property->getType(), '\\'))
-            ->each(function (ReflectionProperty $property) use ($namespace) {
-                $property->setType($namespace.'\\'.$property->getType());
+            ->each(function (ReflectionProperty $property) use ($namespace, $useMap) {
+                $shortName = $property->getType();
+
+                if (isset($useMap[$shortName])) {
+                    // Resolved via a "use" import in the model file.
+                    $property->setType($useMap[$shortName]);
+                } else {
+                    // Fall back to the model's own namespace (same-namespace shorthand).
+                    $property->setType($namespace.'\\'.$shortName);
+                }
             });
 
         return $properties;
+    }
+
+    /**
+     * Parses all "use" import statements from a PHP source file and returns a
+     * map of short name (or alias) → fully-qualified class name.
+     *
+     * Handles:
+     *  - Simple imports:  use Foo\Bar\Baz;
+     *  - Aliased imports: use Foo\Bar\Baz as MyBaz;
+     *
+     * Grouped imports (use Foo\{Bar, Baz};) are intentionally not supported here
+     * as they are uncommon in model files.
+     *
+     * @return array<string, string>
+     */
+    private static function parseUseStatements(string $filePath): array
+    {
+        $source = @file_get_contents($filePath);
+        if ($source === false) {
+            return [];
+        }
+
+        $map = [];
+
+        // Match: use Some\Namespace\ClassName;
+        //   or:  use Some\Namespace\ClassName as Alias;
+        preg_match_all(
+            '/^use\s+([\w\\\\]+)(?:\s+as\s+(\w+))?\s*;/m',
+            $source,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        foreach ($matches as $match) {
+            $fqn      = ltrim($match[1], '\\');
+            $alias    = $match[2] ?? '';
+            $segments = explode('\\', $fqn);
+
+            // Use the explicit alias when given, otherwise the last FQN segment.
+            $shortName       = $alias !== '' ? $alias : end($segments);
+            $map[$shortName] = $fqn;
+        }
+
+        return $map;
     }
 
     /**
@@ -94,11 +158,12 @@ class ReflectionInspector
                 $isNullable = str_starts_with($matches[3][0], '?');
                 $isArray = str_ends_with($matches[3][0], '[]');
                 $isCollection = $matches[2][0] === 'Collection<';
+                $bareType = rtrim(ltrim($matches[3][0], '?'), '[]');
 
                 $textProperties->add(
                     (new ReflectionProperty())
                         ->setName(substr($matches[7][0], 1))
-                        ->setType($matches[4][0])
+                        ->setType($bareType)
                         ->setIsNullable($isNullable)
                         ->setIsArrayType($isArray || $isCollection)
                         ->setKind($kind)
