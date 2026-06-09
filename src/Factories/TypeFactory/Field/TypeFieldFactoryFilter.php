@@ -38,6 +38,10 @@ class TypeFieldFactoryFilter extends TypeFieldFactory
             'float' => FilterFloat::class,
             'bool', 'boolean' => FilterBoolean::class,
             'carbon' => FilterCarbon::class,
+            default => throw new EloquentGraphQLException(
+                "Unsupported filter type '{$this->property->getType()}' on property '{$this->property->getName()}'. ".
+                'Supported types: string, int, float, bool, boolean, carbon.'
+            ),
         };
 
         return $this->service->typeFactory($filterClass)->buildInput();

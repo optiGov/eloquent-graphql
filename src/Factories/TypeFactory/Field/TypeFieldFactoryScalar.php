@@ -60,6 +60,10 @@ class TypeFieldFactoryScalar extends TypeFieldFactory
             'float' => Type::float(),
             'bool', 'boolean' => Type::boolean(),
             'carbon' => $this->service->scalarType(CarbonType::class),
+            default => throw new EloquentGraphQLException(
+                "Unsupported scalar type '{$this->property->getType()}' on property '{$this->property->getName()}'. ".
+                'Supported types: string, int, float, bool, boolean, carbon.'
+            ),
         };
 
         if ($this->property->isArrayType()) {
