@@ -108,7 +108,7 @@ abstract class Paginator
 
         $properties = ReflectionInspector::getPropertiesFromClassDoc($className);
         $properties
-            ->filter(fn (ReflectionProperty $property) => ! $property->isPrimitiveType())
+            ->filter(fn (ReflectionProperty $property) => ! $property->isPrimitiveType() && ! $property->isEnumType())
             ->each(function (ReflectionProperty $property) use ($filter) {
                 if (Arr::exists($filter, $property->getName())) {
                     $this->verifyFilter($filter[$property->getName()], $property->getType());
