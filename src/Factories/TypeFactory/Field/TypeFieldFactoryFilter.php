@@ -27,9 +27,14 @@ class TypeFieldFactoryFilter extends TypeFieldFactory
      */
     protected function getType(): InputObjectType
     {
-        // handle arrays
+        // literal 'array' with no element type is not supported for filtering
         if ($this->property->getType() === 'array') {
             throw new EloquentGraphQLException("The property {$this->property->getName()} is of type array which correlates to a GraphQLList, which is not supported in auto-generation.");
+        }
+
+        // dedicated enum filter type with eq/ne/in/nin operators
+        if ($this->property->isEnumType()) {
+            return $this->service->enumFilterType($this->property->getType());
         }
 
         $filterClass = match (strtolower($this->property->getType())) {
@@ -40,7 +45,7 @@ class TypeFieldFactoryFilter extends TypeFieldFactory
             'carbon' => FilterCarbon::class,
             default => throw new EloquentGraphQLException(
                 "Unsupported filter type '{$this->property->getType()}' on property '{$this->property->getName()}'. ".
-                'Supported types: string, int, float, bool, boolean, carbon.'
+                'Supported types: string, int, float, bool, boolean, carbon, or enum.'
             ),
         };
 
