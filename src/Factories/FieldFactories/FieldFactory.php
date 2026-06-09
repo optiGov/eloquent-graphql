@@ -3,9 +3,7 @@
 namespace EloquentGraphQL\Factories\FieldFactories;
 
 use Closure;
-use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use EloquentGraphQL\Services\EloquentGraphQLService;
-use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\Type;
 use ReflectionException;
 
@@ -90,16 +88,6 @@ abstract class FieldFactory
             'args' => $this->buildArgs(),
             'resolve' => $this->buildResolve(),
         ];
-    }
-
-    /**
-     * Builds the return type for the field.
-     *
-     * @throws ReflectionException|EloquentGraphQLException
-     */
-    private function buildInputType(): InputObjectType
-    {
-        return $this->service->typeFactory($this->model)->buildInput();
     }
 
     /**
