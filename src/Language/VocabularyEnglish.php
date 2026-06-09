@@ -31,25 +31,25 @@ class VocabularyEnglish implements Vocabulary
             return substr($word, 0, -2).'ves';
         }
         if (str_ends_with($word, 'ay')) {
-            return substr($word, 0, 0).'s';
+            return $word.'s';
         }
         if (str_ends_with($word, 'ey')) {
-            return substr($word, 0, 0).'s';
+            return $word.'s';
         }
         if (str_ends_with($word, 'iy')) {
-            return substr($word, 0, 0).'s';
+            return $word.'s';
         }
         if (str_ends_with($word, 'oy')) {
-            return substr($word, 0, 0).'s';
+            return $word.'s';
         }
         if (str_ends_with($word, 'uy')) {
-            return substr($word, 0, 0).'s';
+            return $word.'s';
         }
         if (str_ends_with($word, 'y')) {
             return substr($word, 0, -1).'ies';
         }
         if (str_ends_with($word, 'o')) {
-            return substr($word, 0, 0).'es';
+            return $word.'es';
         }
         if (str_ends_with($word, 'us')) {
             return substr($word, 0, -2).'i';
