@@ -72,6 +72,11 @@ class TypeFactory
     private EloquentGraphQLService $service;
 
     /**
+     * Tracks whether class-doc fields have already been collected.
+     */
+    private bool $classDocCollected = false;
+
+    /**
      * The resulting GraphQL type, stored for caching purposes.
      */
     private ?ObjectType $type = null;
@@ -278,10 +283,7 @@ class TypeFactory
 
         $this->collectFieldsFromClassDoc();
 
-        // collect fields from properties but do not ignore the field if it is the id of a hasOne relation
-        // because those fields can be directly filled with a scalar value and need no extra input type like
-        // a hasMany relationship does with a GraphQLList(GraphQLInt).
-        $fields = $fields->merge($this->buildInputTypeFieldsFromProperties(true))
+        $fields = $fields->merge($this->buildInputTypeFieldsFromProperties())
             ->merge($this->buildInputTypeFieldsFromHasOne())
             ->merge($this->buildInputTypeFieldsFromHasMany());
 
@@ -357,12 +359,19 @@ class TypeFactory
     }
 
     /**
-     * Collects field from the class doc and uses those to add hasMany and hasOne relations.
+     * Collects fields from the class doc and populates hasMany, hasOne and docProperties.
+     * Runs only once per TypeFactory instance; subsequent calls are no-ops.
      *
      * @throws ReflectionException
      */
     private function collectFieldsFromClassDoc(): void
     {
+        if ($this->classDocCollected) {
+            return;
+        }
+
+        $this->classDocCollected = true;
+
         ReflectionInspector::getPropertiesFromClassDoc($this->model)
             ->each(function (ReflectionProperty $property) {
                 if ($property->isPrimitiveType()) {
@@ -436,7 +445,7 @@ class TypeFactory
 
         $this->docProperties
             ->filter(fn (ReflectionProperty $property) => $property->isReadable())
-            ->each(function (ReflectionProperty $property, string $name) use ($fields) {
+            ->each(function (ReflectionProperty $property, string $name) use (&$fields) {
                 $fields->put(
                     $property->getName(),
                     (new TypeFieldFactoryScalar($this->service))
@@ -498,7 +507,7 @@ class TypeFactory
         $this->docProperties
             ->filter(fn (ReflectionProperty $property) => $property->getName() !== 'id')
             ->filter(fn (ReflectionProperty $property) => $property->isWritable())
-            ->each(function (ReflectionProperty $property, string $name) use ($fields) {
+            ->each(function (ReflectionProperty $property, string $name) use (&$fields) {
                 $fields->put(
                     $property->getName(),
                     (new TypeFieldFactoryScalar($this->service))
