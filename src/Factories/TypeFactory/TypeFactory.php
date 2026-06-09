@@ -374,7 +374,7 @@ class TypeFactory
 
         ReflectionInspector::getPropertiesFromClassDoc($this->model)
             ->each(function (ReflectionProperty $property) {
-                if ($property->isPrimitiveType()) {
+                if ($property->isPrimitiveType() || $property->isEnumType()) {
                     $this->docProperties->put($property->getName(), $property);
                 } elseif ($property->isArrayType()) {
                     $this->hasMany->put($property->getName(), $property);
