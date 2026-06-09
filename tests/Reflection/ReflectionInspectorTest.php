@@ -4,6 +4,8 @@ namespace EloquentGraphQL\Tests\Reflection;
 
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use EloquentGraphQL\Reflection\ReflectionProperty;
+use EloquentGraphQL\Tests\Enums\Status;
+use EloquentGraphQL\Tests\Models\Article;
 use EloquentGraphQL\Tests\Models\Author;
 use EloquentGraphQL\Tests\Models\Book;
 use PHPUnit\Framework\TestCase;
@@ -114,5 +116,29 @@ class ReflectionInspectorTest extends TestCase
 
         // 'id' is declared as plain int (not nullable).
         $this->assertFalse($properties['id']->isNullable());
+    }
+
+    public function testUseStatementResolvesShortEnumName(): void
+    {
+        // Article uses "use EloquentGraphQL\Tests\Enums\Status;" and declares
+        // "@property Status $status" in its docblock — the short name must be
+        // resolved to the fully-qualified enum class via the use statement.
+        $properties = ReflectionInspector::getPropertiesFromClassDoc(Article::class)
+            ->keyBy(fn (ReflectionProperty $p) => $p->getName());
+
+        $this->assertArrayHasKey('status', $properties);
+        $this->assertSame(Status::class, $properties['status']->getType());
+        $this->assertTrue($properties['status']->isEnumType());
+    }
+
+    public function testUseStatementResolvesNullableShortEnumName(): void
+    {
+        // "@property ?Priority $priority" — nullable, resolved the same way.
+        $properties = ReflectionInspector::getPropertiesFromClassDoc(Article::class)
+            ->keyBy(fn (ReflectionProperty $p) => $p->getName());
+
+        $this->assertArrayHasKey('priority', $properties);
+        $this->assertTrue($properties['priority']->isNullable());
+        $this->assertTrue($properties['priority']->isEnumType());
     }
 }
