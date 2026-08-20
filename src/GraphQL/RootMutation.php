@@ -4,6 +4,7 @@ namespace EloquentGraphQL\GraphQL;
 
 use EloquentGraphQL\Factories\FieldFactories\FieldFactoryCreate;
 use EloquentGraphQL\Factories\FieldFactories\FieldFactoryDelete;
+use EloquentGraphQL\Factories\FieldFactories\FieldFactoryDuplicate;
 use EloquentGraphQL\Factories\FieldFactories\FieldFactoryUpdate;
 use EloquentGraphQL\Reflection\ReflectionInspector;
 use GraphQL\Type\Definition\ObjectType;
@@ -50,6 +51,21 @@ class RootMutation extends RootType
         $field = new FieldFactoryUpdate($this->service);
 
         $field->name($this->vocab->update($className))
+            ->pureName($className)
+            ->model($model);
+
+        return $this->field($field->getName(), $field->build());
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function duplicate(string $model): static
+    {
+        $className = ReflectionInspector::getShortClassName($model);
+        $field = new FieldFactoryDuplicate($this->service);
+
+        $field->name($this->vocab->duplicate($className))
             ->pureName($className)
             ->model($model);
 
