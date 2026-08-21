@@ -160,6 +160,17 @@ class VocabularyEnglishTest extends TestCase
         $this->assertSame('deleteBook', $this->vocab->delete('Book'));
     }
 
+    public function testDuplicateVerb(): void
+    {
+        $this->assertSame('duplicateBook',   $this->vocab->duplicate('Book'));
+        $this->assertSame('duplicateAuthor', $this->vocab->duplicate('Author'));
+    }
+
+    public function testUnauthorizedDuplicateError(): void
+    {
+        $this->assertSame('You are not authorized to duplicate this model.', $this->vocab->errorUnauthorizedDuplicate());
+    }
+
     public function testAllVerbWithCommonModels(): void
     {
         $this->assertSame('allBooks',    $this->vocab->all('Book'));
