@@ -8,6 +8,9 @@ use EloquentGraphQL\Events\GraphQLDuplicatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+use Illuminate\Support\Facades\DB;
 use ReflectionException;
 
 class FieldFactoryDuplicate extends FieldFactory
@@ -30,12 +33,20 @@ class FieldFactoryDuplicate extends FieldFactory
                 return false;
             }
 
-            $this->service->security()->assertCanDuplicate($model);
+            $relations = $args['relations'] ?? [];
+
+            $this->service->security()->assertCanDuplicate($model, $relations);
 
             GraphQLDuplicatingModel::dispatch($model);
 
-            $duplicate = $model->replicate();
-            $duplicate->save();
+            $duplicate = DB::transaction(function () use ($model, $relations) {
+                $duplicate = $model->replicate();
+                $duplicate->save();
+
+                $this->duplicateRelations($model, $duplicate, $relations);
+
+                return $duplicate;
+            });
 
             GraphQLDuplicatedModel::dispatch($duplicate);
 
@@ -43,11 +54,47 @@ class FieldFactoryDuplicate extends FieldFactory
         };
     }
 
+    /**
+     * @param  string[]  $relations
+     *
+     * @throws EloquentGraphQLException
+     */
+    protected function duplicateRelations(Model $model, Model $duplicate, array $relations): void
+    {
+        foreach ($relations as $relationName) {
+            $relation = $model->{$relationName}();
+
+            if ($relation instanceof HasOneOrMany) {
+                $foreignKeyName = $relation->getForeignKeyName();
+
+                $model->{$relationName}()->get()->each(function (Model $related) use ($duplicate, $foreignKeyName) {
+                    $relatedDuplicate = $related->replicate();
+                    $relatedDuplicate->{$foreignKeyName} = $duplicate->getKey();
+                    $relatedDuplicate->save();
+                });
+
+                continue;
+            }
+
+            if ($relation instanceof BelongsToMany) {
+                $keyName = $relation->getRelated()->getKeyName();
+                $duplicate->{$relationName}()->attach($model->{$relationName}->pluck($keyName));
+
+                continue;
+            }
+
+            throw new EloquentGraphQLException("Relation '$relationName' cannot be duplicated automatically.");
+        }
+    }
+
     protected function buildArgs(): array
     {
         return [
             'id' => [
                 'type' => Type::nonNull(Type::int()),
+            ],
+            'relations' => [
+                'type' => Type::listOf(Type::nonNull(Type::string())),
             ],
         ];
     }

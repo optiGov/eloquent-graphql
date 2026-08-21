@@ -75,9 +75,9 @@ class SecurityGuard
      * @throws BindingResolutionException
      * @throws GraphQLError
      */
-    public function assertCanDuplicate(object $model): void
+    public function assertCanDuplicate(object $model, array $relations = []): void
     {
-        if (! $this->check('duplicate', $model::class, [$model])) {
+        if (! $this->check('duplicate', $model::class, [$model, $relations])) {
             throw new GraphQLError($this->vocab->errorUnauthorizedDuplicate());
         }
     }
