@@ -6,10 +6,12 @@ use Closure;
 use EloquentGraphQL\Events\GraphQLDuplicatedModel;
 use EloquentGraphQL\Events\GraphQLDuplicatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use ReflectionException;
 
@@ -30,7 +32,7 @@ class FieldFactoryDuplicate extends FieldFactory
             $model = call_user_func("$this->model::find", $args['id']);
 
             if (! $model) {
-                return false;
+                throw new GraphQLError($this->service->vocab()->errorNotFound());
             }
 
             $relations = $args['relations'] ?? [];
@@ -55,6 +57,11 @@ class FieldFactoryDuplicate extends FieldFactory
     }
 
     /**
+     * Duplicates the given relations onto the freshly created duplicate.
+     *
+     * Note: relations are only duplicated one level deep — the related models'
+     * own relations are not recursively duplicated.
+     *
      * @param  string[]  $relations
      *
      * @throws EloquentGraphQLException
@@ -62,7 +69,15 @@ class FieldFactoryDuplicate extends FieldFactory
     protected function duplicateRelations(Model $model, Model $duplicate, array $relations): void
     {
         foreach ($relations as $relationName) {
+            if (! method_exists($model, $relationName)) {
+                throw new EloquentGraphQLException("Relation '$relationName' does not exist on the model.");
+            }
+
             $relation = $model->{$relationName}();
+
+            if (! $relation instanceof Relation) {
+                throw new EloquentGraphQLException("'$relationName' is not a relation and cannot be duplicated.");
+            }
 
             if ($relation instanceof HasOneOrMany) {
                 $foreignKeyName = $relation->getForeignKeyName();
@@ -77,6 +92,7 @@ class FieldFactoryDuplicate extends FieldFactory
             }
 
             if ($relation instanceof BelongsToMany) {
+                // Only the associations are copied, not any extra pivot columns.
                 $keyName = $relation->getRelated()->getKeyName();
                 $duplicate->{$relationName}()->attach($model->{$relationName}->pluck($keyName));
 

@@ -36,4 +36,5 @@ interface Vocabulary
 
     public function errorUnauthorizedViewAny(): string;
 
+    public function errorNotFound(): string;
 }
