@@ -64,7 +64,7 @@ class FieldTest extends TestCase
         $type = $mutation->build();
         $field = $type->getField('duplicateBook');
 
-        $this->assertSame('Book!', $field->getType()->toString());
+        $this->assertSame('Book', $field->getType()->toString());
 
         $this->assertInstanceOf(Argument::class, $field->getArg('id'));
         $this->assertSame('Int!', $field->getArg('id')->getType()->toString());

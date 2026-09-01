@@ -209,9 +209,4 @@ class VocabularyGerman implements Vocabulary
     {
         return 'Sie sind nicht berechtigt, diese Einträge anzusehen.';
     }
-
-    public function errorNotFound(): string
-    {
-        return 'Der angeforderte Eintrag wurde nicht gefunden.';
-    }
 }

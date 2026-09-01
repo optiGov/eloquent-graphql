@@ -138,9 +138,4 @@ class VocabularyEnglish implements Vocabulary
     {
         return 'You are not authorized to view any model.';
     }
-
-    public function errorNotFound(): string
-    {
-        return 'The requested model was not found.';
-    }
 }

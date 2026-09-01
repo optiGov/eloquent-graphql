@@ -6,7 +6,6 @@ use Closure;
 use EloquentGraphQL\Events\GraphQLDuplicatedModel;
 use EloquentGraphQL\Events\GraphQLDuplicatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
-use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -22,17 +21,18 @@ class FieldFactoryDuplicate extends FieldFactory
      */
     protected function buildReturnType(): Type
     {
-        return $this->service->typeFactory($this->model)->buildNonNull();
+        return $this->service->typeFactory($this->model)->build();
     }
 
     protected function buildResolve(): Closure
     {
         return function ($_, $args) {
             /** @var Model $model */
-            $model = call_user_func("$this->model::find", $args['id']);
+            $model = call_user_func("{$this->model}::find", $args['id']);
 
+            // return null if model does not exist
             if (! $model) {
-                throw new GraphQLError($this->service->vocab()->errorNotFound());
+                return null;
             }
 
             $relations = $args['relations'] ?? [];

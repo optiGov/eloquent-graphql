@@ -35,6 +35,4 @@ interface Vocabulary
     public function errorUnauthorizedViewProperty(): string;
 
     public function errorUnauthorizedViewAny(): string;
-
-    public function errorNotFound(): string;
 }

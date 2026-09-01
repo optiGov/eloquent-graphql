@@ -164,9 +164,4 @@ class EloquentGraphQLService
     {
         return $this->securityGuard;
     }
-
-    public function vocab(): Vocabulary
-    {
-        return $this->vocab;
-    }
 }
