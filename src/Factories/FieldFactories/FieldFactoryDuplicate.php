@@ -37,7 +37,8 @@ class FieldFactoryDuplicate extends FieldFactory
 
             $relations = $args['relations'] ?? [];
 
-            $this->service->security()->assertCanDuplicate($model, $relations);
+            $this->service->security()->assertCanDuplicate($model);
+            $this->assertRelationsCanBeDuplicated($model, $relations);
 
             GraphQLDuplicatingModel::dispatch($model);
 
@@ -54,6 +55,31 @@ class FieldFactoryDuplicate extends FieldFactory
 
             return $duplicate;
         };
+    }
+
+    /**
+     * Authorizes each requested relation by asserting that every related model may be
+     * duplicated on its own policy.
+     *
+     * @param  string[]  $relations
+     *
+     * @throws EloquentGraphQLException
+     */
+    protected function assertRelationsCanBeDuplicated(Model $model, array $relations): void
+    {
+        foreach ($relations as $relationName) {
+            if (! method_exists($model, $relationName)) {
+                throw new EloquentGraphQLException("Relation '$relationName' does not exist on the model.");
+            }
+
+            if (! $model->{$relationName}() instanceof Relation) {
+                throw new EloquentGraphQLException("'$relationName' is not a relation and cannot be duplicated.");
+            }
+
+            $model->{$relationName}()->get()->each(
+                fn (Model $relatedModel) => $this->service->security()->assertCanDuplicate($relatedModel)
+            );
+        }
     }
 
     /**

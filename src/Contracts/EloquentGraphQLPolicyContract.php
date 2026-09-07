@@ -38,11 +38,9 @@ interface EloquentGraphQLPolicyContract
     public function create(Authenticatable $user, array $data): bool;
 
     /**
-     * Determine whether the user can duplicate the model together with the given relations.
-     *
-     * @param  string[]  $relations
+     * Determine whether the user can duplicate the model.
      */
-    public function duplicate(Authenticatable $user, Model $model, array $relations): bool;
+    public function duplicate(Authenticatable $user, Model $model): bool;
 
     /**
      * Determine whether the user can update the model.
