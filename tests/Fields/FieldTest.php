@@ -69,7 +69,7 @@ class FieldTest extends TestCase
         $this->assertInstanceOf(Argument::class, $field->getArg('id'));
         $this->assertSame('Int!', $field->getArg('id')->getType()->toString());
 
-        $this->assertInstanceOf(Argument::class, $field->getArg('relations'));
-        $this->assertSame('[String!]', $field->getArg('relations')->getType()->toString());
+        // relations are derived from the model, not requested by the client
+        $this->assertNull($field->getArg('relations'));
     }
 }

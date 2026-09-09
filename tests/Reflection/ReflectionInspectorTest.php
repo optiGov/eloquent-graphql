@@ -67,6 +67,16 @@ class ReflectionInspectorTest extends TestCase
         $this->assertFalse($properties['books']->hasOrder());
     }
 
+    public function testDuplicateAnnotationIsParsed(): void
+    {
+        $properties = ReflectionInspector::getPropertiesFromClassDoc(Author::class)
+            ->keyBy(fn (ReflectionProperty $p) => $p->getName());
+
+        // @duplicateable is declared on the books property, but not on publisher
+        $this->assertTrue($properties['books']->isDuplicateable());
+        $this->assertFalse($properties['publisher']->isDuplicateable());
+    }
+
     public function testResultIsCached(): void
     {
         // First call populates the cache.

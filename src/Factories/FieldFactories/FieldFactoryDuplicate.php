@@ -10,7 +10,7 @@ use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
-use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use ReflectionException;
 
@@ -35,18 +35,15 @@ class FieldFactoryDuplicate extends FieldFactory
                 return null;
             }
 
-            $relations = $args['relations'] ?? [];
-
             $this->service->security()->assertCanDuplicate($model);
-            $this->assertRelationsCanBeDuplicated($model, $relations);
 
             GraphQLDuplicatingModel::dispatch($model);
 
-            $duplicate = DB::transaction(function () use ($model, $relations) {
+            $duplicate = DB::transaction(function () use ($model) {
                 $duplicate = $model->replicate();
                 $duplicate->save();
 
-                $this->duplicateRelations($model, $duplicate, $relations);
+                $this->duplicateRelations($model, $duplicate);
 
                 return $duplicate;
             });
@@ -57,58 +54,35 @@ class FieldFactoryDuplicate extends FieldFactory
         };
     }
 
-    /**
-     * Authorizes each requested relation by asserting that every related model may be
-     * duplicated on its own policy.
-     *
-     * @param  string[]  $relations
-     *
-     * @throws EloquentGraphQLException
-     */
-    protected function assertRelationsCanBeDuplicated(Model $model, array $relations): void
+    private function relations(): Collection
     {
-        foreach ($relations as $relationName) {
-            if (! method_exists($model, $relationName)) {
-                throw new EloquentGraphQLException("Relation '$relationName' does not exist on the model.");
-            }
+        $typeFactory = $this->service->typeFactory($this->model);
 
-            if (! $model->{$relationName}() instanceof Relation) {
-                throw new EloquentGraphQLException("'$relationName' is not a relation and cannot be duplicated.");
-            }
-
-            $model->{$relationName}()->get()->each(
-                fn (Model $relatedModel) => $this->service->security()->assertCanDuplicate($relatedModel)
-            );
-        }
+        return $typeFactory->getHasOne()->merge($typeFactory->getHasMany());
     }
 
     /**
-     * Duplicates the given relations onto the freshly created duplicate.
+     * Duplicates the relations marked with @duplicateable onto the freshly created
+     * duplicate. Relations without the annotation are left alone.
      *
      * Note: relations are only duplicated one level deep — the related models'
      * own relations are not recursively duplicated.
      *
-     * @param  string[]  $relations
-     *
      * @throws EloquentGraphQLException
      */
-    protected function duplicateRelations(Model $model, Model $duplicate, array $relations): void
+    protected function duplicateRelations(Model $model, Model $duplicate): void
     {
-        foreach ($relations as $relationName) {
-            if (! method_exists($model, $relationName)) {
-                throw new EloquentGraphQLException("Relation '$relationName' does not exist on the model.");
+        foreach ($this->relations() as $relationName => $property) {
+            if (! $property->isDuplicateable() || ! $model->isRelation($relationName)) {
+                continue;
             }
 
             $relation = $model->{$relationName}();
 
-            if (! $relation instanceof Relation) {
-                throw new EloquentGraphQLException("'$relationName' is not a relation and cannot be duplicated.");
-            }
-
             if ($relation instanceof HasOneOrMany) {
                 $foreignKeyName = $relation->getForeignKeyName();
 
-                $model->{$relationName}()->get()->each(function (Model $related) use ($duplicate, $foreignKeyName) {
+                $relation->get()->each(function (Model $related) use ($duplicate, $foreignKeyName) {
                     $relatedDuplicate = $related->replicate();
                     $relatedDuplicate->{$foreignKeyName} = $duplicate->getKey();
                     $relatedDuplicate->save();
@@ -119,13 +93,16 @@ class FieldFactoryDuplicate extends FieldFactory
 
             if ($relation instanceof BelongsToMany) {
                 // Only the associations are copied, not any extra pivot columns.
-                $keyName = $relation->getRelated()->getKeyName();
-                $duplicate->{$relationName}()->attach($model->{$relationName}->pluck($keyName));
+                $duplicate->{$relationName}()->attach($relation->pluck($relation->getRelated()->getQualifiedKeyName()));
 
                 continue;
             }
 
-            throw new EloquentGraphQLException("Relation '$relationName' cannot be duplicated automatically.");
+            $relationType = $relation::class;
+
+            throw new EloquentGraphQLException(
+                "Relation '$relationName' of {$this->model} is marked @duplicateable, but relations of type $relationType cannot be duplicated."
+            );
         }
     }
 
@@ -134,9 +111,6 @@ class FieldFactoryDuplicate extends FieldFactory
         return [
             'id' => [
                 'type' => Type::nonNull(Type::int()),
-            ],
-            'relations' => [
-                'type' => Type::listOf(Type::nonNull(Type::string())),
             ],
         ];
     }
