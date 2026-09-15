@@ -69,6 +69,11 @@ class VocabularyEnglish implements Vocabulary
         return 'create'.ucwords($word);
     }
 
+    public function duplicate(string $word): string
+    {
+        return 'duplicate'.ucwords($word);
+    }
+
     public function view(string $word): string
     {
         return lcfirst($word);
@@ -102,6 +107,11 @@ class VocabularyEnglish implements Vocabulary
     public function errorUnauthorizedCreate(): string
     {
         return 'You are not authorized to create this model.';
+    }
+
+    public function errorUnauthorizedDuplicate(): string
+    {
+        return 'You are not authorized to duplicate this model.';
     }
 
     public function errorUnauthorizedDelete(): string

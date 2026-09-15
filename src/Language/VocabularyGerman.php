@@ -140,6 +140,11 @@ class VocabularyGerman implements Vocabulary
         return 'erstelle'.ucwords($word);
     }
 
+    public function duplicate(string $word): string
+    {
+        return 'dupliziere'.ucwords($word);
+    }
+
     public function view(string $word): string
     {
         return lcfirst($word);
@@ -173,6 +178,11 @@ class VocabularyGerman implements Vocabulary
     public function errorUnauthorizedCreate(): string
     {
         return 'Sie sind nicht berechtigt, diesen Eintrag zu erstellen.';
+    }
+
+    public function errorUnauthorizedDuplicate(): string
+    {
+        return 'Sie sind nicht berechtigt, diesen Eintrag zu duplizieren.';
     }
 
     public function errorUnauthorizedDelete(): string

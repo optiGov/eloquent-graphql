@@ -5,6 +5,7 @@ namespace EloquentGraphQL\Tests\Fields;
 use EloquentGraphQL\Services\EloquentGraphQLService;
 use EloquentGraphQL\Tests\Models\Author;
 use EloquentGraphQL\Tests\Models\Book;
+use GraphQL\Type\Definition\Argument;
 use GraphQL\Type\Definition\Type;
 use PHPUnit\Framework\TestCase;
 
@@ -50,5 +51,25 @@ class FieldTest extends TestCase
         $this->assertSame('Book!', $type->getField('createBook')->getType()->toString());
         $this->assertSame('Boolean!', $type->getField('deleteBook')->getType()->toString());
         $this->assertSame('Boolean!', $type->getField('updateBook')->getType()->toString());
+    }
+
+    public function testDuplicateMutationCreation(): void
+    {
+        $graphql = new EloquentGraphQLService();
+
+        $mutation = $graphql->mutation();
+
+        $mutation->duplicate(Book::class);
+
+        $type = $mutation->build();
+        $field = $type->getField('duplicateBook');
+
+        $this->assertSame('Book', $field->getType()->toString());
+
+        $this->assertInstanceOf(Argument::class, $field->getArg('id'));
+        $this->assertSame('Int!', $field->getArg('id')->getType()->toString());
+
+        // relations are derived from the model, not requested by the client
+        $this->assertNull($field->getArg('relations'));
     }
 }

@@ -123,6 +123,16 @@ class VocabularyGermanTest extends TestCase
         $this->assertSame('loescheBenutzer', $this->vocab->delete('Benutzer'));
     }
 
+    public function testDuplicateVerb(): void
+    {
+        $this->assertSame('dupliziereBenutzer', $this->vocab->duplicate('Benutzer'));
+    }
+
+    public function testUnauthorizedDuplicateError(): void
+    {
+        $this->assertSame('Sie sind nicht berechtigt, diesen Eintrag zu duplizieren.', $this->vocab->errorUnauthorizedDuplicate());
+    }
+
     public function testAllVerb(): void
     {
         $this->assertSame('alleMeinungen',   $this->vocab->all('Meinung'));

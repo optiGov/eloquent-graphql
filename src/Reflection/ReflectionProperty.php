@@ -66,6 +66,11 @@ class ReflectionProperty
     private bool $isComputed = false;
 
     /**
+     * Determines whether the relation is duplicated along with the model.
+     */
+    private bool $isDuplicateable = false;
+
+    /**
      * Determines whether eager loading is disabled.
      */
     private bool $eagerLoadDisabled = false;
@@ -293,6 +298,24 @@ class ReflectionProperty
     public function setEagerLoadDisabled(bool $eagerLoadDisabled): ReflectionProperty
     {
         $this->eagerLoadDisabled = $eagerLoadDisabled;
+
+        return $this;
+    }
+
+    /**
+     * Returns whether the relation is duplicated along with the model.
+     */
+    public function isDuplicateable(): bool
+    {
+        return $this->isDuplicateable;
+    }
+
+    /**
+     * Sets whether the relation is duplicated along with the model.
+     */
+    public function setIsDuplicateable(bool $isDuplicateable): ReflectionProperty
+    {
+        $this->isDuplicateable = $isDuplicateable;
 
         return $this;
     }

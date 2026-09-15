@@ -8,6 +8,8 @@ interface Vocabulary
 
     public function create(string $word): string;
 
+    public function duplicate(string $word): string;
+
     public function view(string $word): string;
 
     public function update(string $word): string;
@@ -22,6 +24,8 @@ interface Vocabulary
 
     public function errorUnauthorizedCreate(): string;
 
+    public function errorUnauthorizedDuplicate(): string;
+
     public function errorUnauthorizedDelete(): string;
 
     public function errorUnauthorizedUpdate(): string;
@@ -31,5 +35,4 @@ interface Vocabulary
     public function errorUnauthorizedViewProperty(): string;
 
     public function errorUnauthorizedViewAny(): string;
-
 }

@@ -75,6 +75,17 @@ class SecurityGuard
      * @throws BindingResolutionException
      * @throws GraphQLError
      */
+    public function assertCanDuplicate(object $model): void
+    {
+        if (! $this->check('duplicate', $model::class, [$model])) {
+            throw new GraphQLError($this->vocab->errorUnauthorizedDuplicate());
+        }
+    }
+
+    /**
+     * @throws BindingResolutionException
+     * @throws GraphQLError
+     */
     public function assertCanDelete(object $model): void
     {
         if (! $this->check('delete', $model::class, [$model])) {
