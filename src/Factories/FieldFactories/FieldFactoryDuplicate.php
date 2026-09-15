@@ -93,7 +93,7 @@ class FieldFactoryDuplicate extends FieldFactory
 
             if ($relation instanceof BelongsToMany) {
                 // Only the associations are copied, not any extra pivot columns.
-                $duplicate->{$relationName}()->attach($relation->pluck($relation->getRelated()->getQualifiedKeyName()));
+                $duplicate->{$relationName}()->attach($relation->pluck($relation->getQualifiedRelatedKeyName()));
 
                 continue;
             }
