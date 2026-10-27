@@ -77,6 +77,16 @@ class ReflectionInspectorTest extends TestCase
         $this->assertFalse($properties['publisher']->isDuplicateable());
     }
 
+    public function testApiReadonlyAnnotationExposesPropertyAsReadOnly(): void
+    {
+        $properties = ReflectionInspector::getPropertiesFromClassDoc(Author::class)
+            ->keyBy(fn (ReflectionProperty $p) => $p->getName());
+
+        $this->assertTrue($properties['slug']->isReadable());
+        $this->assertFalse($properties['slug']->isWritable());
+        $this->assertTrue($properties['name']->isWritable());
+    }
+
     public function testResultIsCached(): void
     {
         // First call populates the cache.

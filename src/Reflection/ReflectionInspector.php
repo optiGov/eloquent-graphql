@@ -144,7 +144,7 @@ class ReflectionInspector
 
         // match properties
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@property(-read|-write)? (Collection<)?(\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?)>? (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)? ?(@computed)? ?(@eager-load-disabled)? ?(@duplicateable)?/m';
+            $regex = '/ ?\*? ?@property(-read|-write)? (Collection<)?(\??(\\\\?([A-Z]|[a-z]|[0-9]|_)+)+(\[\])?)>? (\$([A-Z]|[a-z]|[0-9]|_)+) ?(@paginate)? ?(@filterable)? ?(@orderable)? ?(@computed)? ?(@eager-load-disabled)? ?(@duplicateable)? ?(@api-readonly)?/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
@@ -154,6 +154,12 @@ class ReflectionInspector
                     '-write' => ReflectionProperty::KIND_WRITE,
                     default => ReflectionProperty::KIND_DEFAULT
                 };
+
+                // @api-readonly exposes the property as read-only in the API (like
+                // @property-read) while leaving @property writable for static analysis.
+                if ($matches[15][0] === '@api-readonly') {
+                    $kind = ReflectionProperty::KIND_READ;
+                }
 
                 $isNullable = str_starts_with($matches[3][0], '?');
                 $isArray = str_ends_with($matches[3][0], '[]');
