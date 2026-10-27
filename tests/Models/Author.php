@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property string $slug @api-readonly
  * @property Book[] $books @paginate @filterable @duplicateable
  * @property Publisher $publisher
  */
