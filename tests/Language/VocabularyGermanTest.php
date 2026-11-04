@@ -133,6 +133,11 @@ class VocabularyGermanTest extends TestCase
         $this->assertSame('Sie sind nicht berechtigt, diesen Eintrag zu duplizieren.', $this->vocab->errorUnauthorizedDuplicate());
     }
 
+    public function testUnauthorizedOrderPropertyError(): void
+    {
+        $this->assertSame('Sie sind nicht berechtigt, nach der Eigenschaft [email] zu sortieren.', $this->vocab->errorUnauthorizedOrderProperty('email'));
+    }
+
     public function testAllVerb(): void
     {
         $this->assertSame('alleMeinungen',   $this->vocab->all('Meinung'));
