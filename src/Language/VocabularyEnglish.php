@@ -104,6 +104,11 @@ class VocabularyEnglish implements Vocabulary
         return 'You are not authorized to filter the property ['.$property.'].';
     }
 
+    public function errorUnauthorizedOrderProperty(string $property): string
+    {
+        return 'You are not authorized to order by the property ['.$property.'].';
+    }
+
     public function errorUnauthorizedCreate(): string
     {
         return 'You are not authorized to create this model.';
