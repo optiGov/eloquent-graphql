@@ -2,6 +2,7 @@
 
 namespace EloquentGraphQL\Tests\Types;
 
+use EloquentGraphQL\Factories\Pagination\PaginatorIterable;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryFilter;
 use EloquentGraphQL\Factories\TypeFactory\Field\TypeFieldFactoryScalar;
 use EloquentGraphQL\Language\VocabularyEnglish;
@@ -10,6 +11,7 @@ use EloquentGraphQL\Security\SecurityGuard;
 use EloquentGraphQL\Services\EloquentGraphQLService;
 use EloquentGraphQL\Tests\Enums\Priority;
 use EloquentGraphQL\Tests\Enums\Status;
+use EloquentGraphQL\Tests\Enums\Visibility;
 use EloquentGraphQL\Tests\Models\Article;
 use GraphQL\Type\Definition\EnumType;
 use GraphQL\Type\Definition\InputObjectType;
@@ -359,5 +361,105 @@ class EnumTypeTest extends TestCase
         $directEnumType = $service->enumType(Status::class);
 
         $this->assertSame($directEnumType, $statusEnumType);
+    }
+
+    // -----------------------------------------------------------------------
+    // Pure (non-backed) enums
+    // -----------------------------------------------------------------------
+
+    public function testEnumTypeUsesCaseNameAsInternalValueForPureEnum(): void
+    {
+        $service  = new EloquentGraphQLService();
+        $enumType = $service->enumType(Visibility::class);
+
+        $this->assertSame('Visibility', $enumType->name);
+        $this->assertSame('Public', $enumType->getValue('Public')->value);
+        $this->assertSame('Internal', $enumType->getValue('Internal')->value);
+    }
+
+    public function testResolverSerializesPureEnumToItsName(): void
+    {
+        $field = (new TypeFieldFactoryScalar($this->makeService()))
+            ->setFieldName('visibility')
+            ->setProperty($this->makeEnumProperty(Visibility::class, 'visibility'))
+            ->setModel(Article::class)
+            ->build();
+
+        $parent             = new \stdClass();
+        $parent->visibility = Visibility::Internal;
+
+        $this->assertSame('Internal', ($field['resolve'])($parent));
+    }
+
+    // -----------------------------------------------------------------------
+    // Input and order types
+    // -----------------------------------------------------------------------
+
+    public function testInputTypeContainsEnumFields(): void
+    {
+        $service   = new EloquentGraphQLService();
+        $inputType = $service->typeFactory(Article::class)->buildInput();
+
+        $this->assertSame('Status!', $inputType->getField('status')->getType()->toString());
+        $this->assertSame('Priority', $inputType->getField('priority')->getType()->toString());
+    }
+
+    public function testInputTypeSharesEnumTypeWithObjectType(): void
+    {
+        $service   = new EloquentGraphQLService();
+        $inputType = $service->typeFactory(Article::class)->buildInput();
+
+        $this->assertSame($service->enumType(Status::class), $inputType->getField('status')->getType()->getWrappedType());
+    }
+
+    public function testOrderTypeContainsEnumFields(): void
+    {
+        $service   = new EloquentGraphQLService();
+        $orderType = $service->typeFactory(Article::class)->buildOrder();
+
+        $this->assertSame('OrderInput', $orderType->getField('status')->getType()->toString());
+        $this->assertSame('OrderInput', $orderType->getField('priority')->getType()->toString());
+    }
+
+    // -----------------------------------------------------------------------
+    // Filter verification
+    // -----------------------------------------------------------------------
+
+    public function testFilterVerificationDoesNotTreatEnumPropertyAsRelation(): void
+    {
+        $verifiedClassNames = new \ArrayObject();
+
+        $service = new class($verifiedClassNames) extends EloquentGraphQLService {
+            public function __construct(private readonly \ArrayObject $verifiedClassNames)
+            {
+                parent::__construct();
+            }
+
+            public function security(): SecurityGuard
+            {
+                return new class($this, new VocabularyEnglish(), $this->verifiedClassNames) extends SecurityGuard {
+                    public function __construct(EloquentGraphQLService $service, VocabularyEnglish $vocab, private readonly \ArrayObject $verifiedClassNames)
+                    {
+                        parent::__construct($service, $vocab);
+                    }
+
+                    public function assertCanFilter(string $className, array $filter): void
+                    {
+                        $this->verifiedClassNames->append($className);
+                    }
+                };
+            }
+        };
+
+        $paginator = new class extends PaginatorIterable {
+            protected function applyFilter(array $filter): void {}
+        };
+
+        $paginator
+            ->className(Article::class)
+            ->service($service)
+            ->filter(['status' => ['in' => ['active']], 'priority' => ['eq' => 1]]);
+
+        $this->assertSame([Article::class], $verifiedClassNames->getArrayCopy());
     }
 }
