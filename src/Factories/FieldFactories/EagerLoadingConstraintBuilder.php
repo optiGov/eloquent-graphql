@@ -167,12 +167,6 @@ class EagerLoadingConstraintBuilder
 
     private function buildRelationConstraintQuery(array $arguments, ObjectType $nodeFieldType)
     {
-        if (empty($arguments)) {
-            return function (Relation $query) {
-                return $query;
-            };
-        }
-
         return function (Relation $query) use ($arguments, $nodeFieldType) {
             $paginator = new PaginatorQuery($query);
 

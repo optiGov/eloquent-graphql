@@ -2,12 +2,14 @@
 
 namespace EloquentGraphQL\Security;
 
+use EloquentGraphQL\Contracts\EloquentGraphQLPolicyContract;
 use EloquentGraphQL\Exceptions\GraphQLError;
 use EloquentGraphQL\Language\Vocabulary;
 use EloquentGraphQL\Reflection\ReflectionProperty;
 use EloquentGraphQL\Services\EloquentGraphQLService;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class SecurityGuard
@@ -58,6 +60,49 @@ class SecurityGuard
                 throw new GraphQLError($this->vocab->errorUnauthorizedFilterProperty($property));
             }
         }
+    }
+
+    /**
+     * @throws BindingResolutionException
+     * @throws GraphQLError
+     */
+    public function assertCanOrder(string $className, array $order): void
+    {
+        foreach ($order as $property => $value) {
+            if (! $this->check('filterProperty', $className, [$property])) {
+                throw new GraphQLError($this->vocab->errorUnauthorizedOrderProperty($property));
+            }
+        }
+    }
+
+    /**
+     * Restricts the query to the models the user can view, so that filters and counts only consider those.
+     *
+     * @throws BindingResolutionException
+     */
+    public function applyViewableScope(string $className, Builder $query): void
+    {
+        $policy = app()->make(Gate::class)->getPolicyFor($className);
+
+        if (! $policy instanceof EloquentGraphQLPolicyContract) {
+            return;
+        }
+
+        $user = auth()->guard('api')->user();
+
+        $query->where(fn (Builder $query) => $policy->scopeViewable($user, $query));
+    }
+
+    /**
+     * Returns only the models the user can view.
+     *
+     * @throws BindingResolutionException
+     */
+    public function filterViewable(Collection|iterable $models): Collection
+    {
+        return collect($models)
+            ->filter(fn (object $model) => $this->check('view', $model::class, [$model]))
+            ->values();
     }
 
     /**
