@@ -11,11 +11,14 @@ use EloquentGraphQL\Tests\Models\Reader;
 use EloquentGraphQL\Tests\Policies\AuthorPolicy;
 use EloquentGraphQL\Tests\Policies\BookPolicy;
 use Illuminate\Auth\Access\Gate;
+use Illuminate\Auth\RequestGuard;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -34,16 +37,13 @@ class ViewableScopeTest extends TestCase
         $gate->policy(Author::class, AuthorPolicy::class);
         $gate->policy(Book::class, BookPolicy::class);
         $container->instance(GateContract::class, $gate);
-        $container->instance(AuthFactory::class, new class {
-            public function guard(?string $name = null): object
+        $container->instance(AuthFactory::class, new class implements AuthFactory {
+            public function guard($name = null): Guard
             {
-                return new class {
-                    public function user(): null
-                    {
-                        return null;
-                    }
-                };
+                return new RequestGuard(fn () => null, new Request());
             }
+
+            public function shouldUse($name): void {}
         });
 
         $capsule = new Capsule($container);
