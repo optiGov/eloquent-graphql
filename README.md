@@ -109,6 +109,34 @@ class Author {
 }
 ```
 
+### Authorization
+
+Every model needs a Laravel policy implementing `EloquentGraphQLPolicyContract`. Besides the usual abilities, the
+policy restricts queries to the models the user can view with `scopeViewable()`. Lists, counts, filters (including
+filters on relations) only consider those models, so they cannot reveal hidden ones. The scope must yield exactly the
+models for which `view()` returns true.
+
+```php
+class AuthorPolicy implements EloquentGraphQLPolicyContract
+{
+    public function scopeViewable(?Authenticatable $user, Builder $query): void
+    {
+        if ($user === null) {
+            $query->where('visible', true);
+        }
+    }
+
+    public function view(?Authenticatable $user, Model $model): bool
+    {
+        return $user !== null || $model->visible;
+    }
+
+    // ...
+}
+```
+
+Ordering by a property requires the same permission as filtering by it (`filterProperty()`).
+
 ### Custom Fields
 
 You can add custom fields to your GraphQL types using the `field()` method.

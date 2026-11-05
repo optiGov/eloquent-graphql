@@ -27,6 +27,8 @@ class PaginatorQuery extends Paginator
 
     private Builder $queryBuilder;
 
+    private bool $isViewableScopeApplied = false;
+
     public function __construct(Builder $queryBuilder)
     {
         $this->queryBuilder = $queryBuilder;
@@ -34,6 +36,8 @@ class PaginatorQuery extends Paginator
 
     public function count(): int
     {
+        $this->applyViewableScope();
+
         return $this->queryBuilder->cloneWithout(['limit', 'offset'])->count();
     }
 
@@ -56,6 +60,7 @@ class PaginatorQuery extends Paginator
 
     public function getQueryBuilder(): Builder
     {
+        $this->applyViewableScope();
         $this->applyLimitOffset($this->queryBuilder);
 
         return $this->queryBuilder;
@@ -67,6 +72,7 @@ class PaginatorQuery extends Paginator
             return $this->entries;
         }
 
+        $this->applyViewableScope();
         $this->applyLimitOffset($this->queryBuilder);
 
         return $this->queryBuilder->get();
@@ -144,6 +150,7 @@ class PaginatorQuery extends Paginator
         $relatedTable = $query->getModel()->{$field}()->getRelated()->getTable();
 
         $query->whereHas($field, function (Builder $q) use ($operators, $relatedTable, $level) {
+            $this->service->security()->applyViewableScope($q->getModel()::class, $q);
             $this->applyFilterFieldsOnQuery($operators, $q, $relatedTable, $level + 1);
         });
     }
@@ -267,6 +274,20 @@ class PaginatorQuery extends Paginator
     private function qualifyField(string $field, ?string $tableName): string
     {
         return $tableName ? $tableName.'.'.$field : $field;
+    }
+
+    /**
+     * Restricts the query to the models the user can view. Applied once before the query is executed, so that
+     * filters and counts do not consider models the user cannot view.
+     */
+    private function applyViewableScope(): void
+    {
+        if ($this->isViewableScopeApplied) {
+            return;
+        }
+
+        $this->service->security()->applyViewableScope($this->className, $this->queryBuilder);
+        $this->isViewableScopeApplied = true;
     }
 
     /**

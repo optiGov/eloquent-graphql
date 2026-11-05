@@ -22,6 +22,8 @@ interface Vocabulary
 
     public function errorUnauthorizedFilterProperty(string $property): string;
 
+    public function errorUnauthorizedOrderProperty(string $property): string;
+
     public function errorUnauthorizedCreate(): string;
 
     public function errorUnauthorizedDuplicate(): string;

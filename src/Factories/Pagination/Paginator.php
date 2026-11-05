@@ -77,6 +77,7 @@ abstract class Paginator
         $this->order = $order;
 
         if ($order) {
+            $this->verifyOrder($order, $this->className);
             $this->applyOrder($order);
         }
 
@@ -129,6 +130,23 @@ abstract class Paginator
         if (Arr::exists($filter, 'not')) {
             $this->verifyFilter($filter['not'], $className);
         }
+    }
+
+    /**
+     * @throws BindingResolutionException
+     * @throws GraphQLError|ReflectionException
+     */
+    protected function verifyOrder(array $order, string $className): void
+    {
+        $this->service->security()->assertCanOrder($className, $order);
+
+        ReflectionInspector::getPropertiesFromClassDoc($className)
+            ->filter(fn (ReflectionProperty $property) => ! $property->isPrimitiveType() && ! $property->isEnumType())
+            ->each(function (ReflectionProperty $property) use ($order) {
+                if (Arr::exists($order, $property->getName())) {
+                    $this->verifyOrder($order[$property->getName()], $property->getType());
+                }
+            });
     }
 
     /**

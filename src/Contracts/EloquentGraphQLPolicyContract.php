@@ -2,6 +2,7 @@
 
 namespace EloquentGraphQL\Contracts;
 
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -21,6 +22,12 @@ interface EloquentGraphQLPolicyContract
      * Determine whether the user can view any of the models.
      */
     public function viewAny(?Authenticatable $user): bool;
+
+    /**
+     * Restrict the query to the models the user can view. The query must yield exactly the models for which
+     * view() returns true, otherwise filters and counts would reveal models the user cannot view.
+     */
+    public function scopeViewable(?Authenticatable $user, Builder $query): void;
 
     /**
      * Determine whether the user can view the model.

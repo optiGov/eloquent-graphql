@@ -56,7 +56,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                     $paginator = new PaginatorQuery($builderOrIterable);
                 } else {
                     $paginator = new PaginatorIterable();
-                    $paginator->setEntries($builderOrIterable);
+                    $paginator->setEntries($this->service->security()->filterViewable($builderOrIterable));
                 }
 
                 // set limit and offset
