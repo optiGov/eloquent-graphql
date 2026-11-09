@@ -111,31 +111,42 @@ class Author {
 
 ### Authorization
 
-Every model needs a Laravel policy implementing `EloquentGraphQLPolicyContract`. Besides the usual abilities, the
-policy restricts queries to the models the user can view with `scopeViewable()`. Lists, counts, filters (including
-filters on relations) only consider those models, so they cannot reveal hidden ones. The scope must yield exactly the
-models for which `view()` returns true.
+Every model needs a Laravel policy implementing `EloquentGraphQLPolicyContract`. Models without such a policy are not
+viewable. Besides the usual abilities, `visibility()` defines which models the user can view:
 
 ```php
 class AuthorPolicy implements EloquentGraphQLPolicyContract
 {
-    public function scopeViewable(?Authenticatable $user, Builder $query): void
+    public function visibility(?Authenticatable $user): Visibility
     {
-        if ($user === null) {
-            $query->where('visible', true);
+        if ($user !== null) {
+            return Visibility::all();
         }
-    }
 
-    public function view(?Authenticatable $user, Model $model): bool
-    {
-        return $user !== null || $model->visible;
+        return Visibility::where(fn (Builder $query) => $query->where($query->qualifyColumn('visible'), true));
     }
 
     // ...
 }
 ```
 
-Ordering by a property requires the same permission as filtering by it (`filterProperty()`).
+`Visibility::all()`, `Visibility::none()` and `Visibility::allIf(bool)` need no database query. Non-Eloquent types may
+only use those.
+
+- Every query of the package (lists, counts, single entries, relations, filters and orders on relations, and the models
+  looked up by mutations) is restricted with `security()->constrain()`. Hidden models are neither returned nor counted,
+  and a hidden single entry or has-one relation resolves to `null`.
+- Every field of a model checks `security()->canView()` first. Models loaded through `constrain()` are known to be
+  viewable, so this costs no query. Any other model, e.g. one returned by a custom resolver, is checked once against the
+  visibility. Models created within the request are viewable.
+- Ordering by a property requires the same permission as filtering by it (`filterProperty()`).
+
+Custom resolvers that act on a model should check it before doing so, or load it through `constrain()`:
+
+```php
+$book = Book::findOrFail($args['id']);
+$graphQLService->security()->assertCanView($book);
+```
 
 ### Custom Fields
 
