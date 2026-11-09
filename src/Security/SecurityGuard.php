@@ -92,13 +92,7 @@ class SecurityGuard
      */
     public function getVisibility(string $className): Visibility
     {
-        $policy = app()->make(Gate::class)->getPolicyFor($className);
-
-        if (! $policy instanceof EloquentGraphQLPolicyContract) {
-            return Visibility::none();
-        }
-
-        return $policy->visibility($this->getUser());
+        return $this->getVisibilityFor($className, $this->getUser());
     }
 
     /**
@@ -125,7 +119,7 @@ class SecurityGuard
             $constraint($query);
         }
 
-        $userKey = $this->getUserKey();
+        $userKey = $this->getUserKey($this->getUser());
 
         return $query->afterQuery(function (iterable $results) use ($userKey) {
             foreach ($results as $result) {
@@ -137,18 +131,33 @@ class SecurityGuard
     }
 
     /**
-     * Determines whether the user can view the model. Models loaded through constrain() are known to be viewable,
-     * all others are checked against the visibility once.
+     * Determines whether the user can view the model. Models created within the request are viewable, so that
+     * mutations can return them.
      *
      * @throws BindingResolutionException
      */
     public function canView(object $model): bool
     {
-        $userKey = $this->getUserKey();
+        if ($model instanceof Model && $model->wasRecentlyCreated) {
+            return true;
+        }
+
+        return $this->canViewAs($model, $this->getUser());
+    }
+
+    /**
+     * Determines whether the given user can view the model. Models loaded through constrain() are known to be
+     * viewable, all others are checked against the visibility once.
+     *
+     * @throws BindingResolutionException
+     */
+    public function canViewAs(object $model, ?Authenticatable $user): bool
+    {
+        $userKey = $this->getUserKey($user);
         $canView = $this->viewableEntries[$model][$userKey] ?? null;
 
         if ($canView === null) {
-            $canView = $this->determineCanView($model);
+            $canView = $this->determineCanView($model, $user);
             $this->rememberCanView($model, $userKey, $canView);
         }
 
@@ -170,13 +179,23 @@ class SecurityGuard
     /**
      * @throws BindingResolutionException
      */
-    private function determineCanView(object $model): bool
+    private function getVisibilityFor(string $className, ?Authenticatable $user): Visibility
     {
-        if ($model instanceof Model && $model->wasRecentlyCreated) {
-            return true;
+        $policy = app()->make(Gate::class)->getPolicyFor($className);
+
+        if (! $policy instanceof EloquentGraphQLPolicyContract) {
+            return Visibility::none();
         }
 
-        $visibility = $this->getVisibility($model::class);
+        return $policy->visibility($user);
+    }
+
+    /**
+     * @throws BindingResolutionException
+     */
+    private function determineCanView(object $model, ?Authenticatable $user): bool
+    {
+        $visibility = $this->getVisibilityFor($model::class, $user);
 
         if ($visibility->isAll() || $visibility->isNone()) {
             return $visibility->isAll();
@@ -206,10 +225,8 @@ class SecurityGuard
         return auth()->guard('api')->user();
     }
 
-    private function getUserKey(): string
+    private function getUserKey(?Authenticatable $user): string
     {
-        $user = $this->getUser();
-
         return $user === null ? 'guest' : $user::class.':'.$user->getAuthIdentifier();
     }
 
