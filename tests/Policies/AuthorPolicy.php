@@ -34,7 +34,7 @@ class AuthorPolicy implements EloquentGraphQLPolicyContract
         return Visibility::where(fn (Builder $query) => $query->where('visible', true)->orWhere('name', 'Öffentlich'));
     }
 
-    public function viewProperty(?Authenticatable $user, Model $model, string $property): bool
+    public function viewProperty(?Authenticatable $user, object $model, string $property): bool
     {
         return true;
     }

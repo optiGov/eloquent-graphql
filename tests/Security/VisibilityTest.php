@@ -140,6 +140,24 @@ class VisibilityTest extends TestCase
         $this->assertSame(0, $paginator->count());
     }
 
+    public function test_or_filter_cannot_widen_the_visibility(): void
+    {
+        $paginator = $this->makePaginator(Author::class)->filter([
+            'or' => [['visible' => ['eq' => false]], ['name' => ['eq' => 'Bert']]],
+        ]);
+
+        $this->assertSame(['Öffentlich'], $paginator->get()->pluck('name')->all());
+        $this->assertSame(1, $paginator->count());
+    }
+
+    public function test_not_filter_cannot_widen_the_visibility(): void
+    {
+        $paginator = $this->makePaginator(Author::class)->filter(['not' => ['name' => ['eq' => 'Anna']]]);
+
+        $this->assertSame(['Öffentlich'], $paginator->get()->pluck('name')->all());
+        $this->assertSame(1, $paginator->count());
+    }
+
     public function test_visibility_is_applied_only_once(): void
     {
         $paginator = $this->makePaginator(Author::class);
@@ -263,6 +281,11 @@ class VisibilityTest extends TestCase
     public function test_model_created_within_the_request_is_viewable(): void
     {
         $this->assertTrue($this->service->security()->canView($this->createAuthor('Neu', false)));
+    }
+
+    public function test_model_created_within_the_request_is_checked_for_an_explicit_user(): void
+    {
+        $this->assertFalse($this->service->security()->canViewAs($this->createAuthor('Neu', false), null));
     }
 
     public function test_model_without_policy_is_not_viewable(): void

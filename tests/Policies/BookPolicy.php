@@ -32,7 +32,7 @@ class BookPolicy implements EloquentGraphQLPolicyContract
         return Visibility::all();
     }
 
-    public function viewProperty(?Authenticatable $user, Model $model, string $property): bool
+    public function viewProperty(?Authenticatable $user, object $model, string $property): bool
     {
         return true;
     }
