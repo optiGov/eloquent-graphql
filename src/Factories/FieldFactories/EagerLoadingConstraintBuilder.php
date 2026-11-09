@@ -78,10 +78,10 @@ class EagerLoadingConstraintBuilder
         $returnTypeRelationFieldNames = array_keys($returnTypeRelationFields);
         $queriedRelations = array_intersect($selectedFieldNames, $returnTypeRelationFieldNames);
 
-        // map the queried relations to an empty function
-        $emptyFn = fn (Builder $query) => $query;
-        $emptyFunctions = array_fill(0, count($queriedRelations), $emptyFn);
-        $relationConstraints = array_combine($queriedRelations, $emptyFunctions);
+        // restrict every queried relation to the models the user can view
+        $constrainFn = fn (Builder $query) => $this->service->security()->constrain($query);
+        $constrainFunctions = array_fill(0, count($queriedRelations), $constrainFn);
+        $relationConstraints = array_combine($queriedRelations, $constrainFunctions);
 
         // build the constraints for the queried relations
         foreach ($relationConstraints as $name => $_) {
