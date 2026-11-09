@@ -30,6 +30,11 @@ interface EloquentGraphQLPolicyContract
     public function visibility(?Authenticatable $user): Visibility;
 
     /**
+     * Determine which models the user can connect to another model in a mutation. Usually the same as visibility().
+     */
+    public function connectability(?Authenticatable $user): Visibility;
+
+    /**
      * Determine whether the user can view a specific model's property.
      */
     public function viewProperty(?Authenticatable $user, object $model, string $property): bool;
