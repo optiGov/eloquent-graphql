@@ -138,7 +138,10 @@ only use those.
   and a hidden single entry or has-one relation resolves to `null`.
 - Every field of a model checks `security()->canView()` first. Models loaded through `constrain()` are known to be
   viewable, so this costs no query. Any other model, e.g. one returned by a custom resolver, is checked once against the
-  visibility. Models created within the request are viewable.
+  visibility. Models created within the request are viewable. `security()->canViewAs($model, $user)` checks a model for
+  another user, e.g. in a policy's `view()`.
+- Models connected by mutations are restricted with `connectability()`, which is usually `visibility()`. It may allow
+  more, e.g. freshly uploaded files that nobody can view yet. Connectable models are not remembered as viewable.
 - Ordering by a property requires the same permission as filtering by it (`filterProperty()`).
 
 Custom resolvers that act on a model should check it before doing so, or load it through `constrain()`:
