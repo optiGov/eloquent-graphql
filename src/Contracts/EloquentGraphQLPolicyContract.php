@@ -32,7 +32,7 @@ interface EloquentGraphQLPolicyContract
     /**
      * Determine whether the user can view a specific model's property.
      */
-    public function viewProperty(?Authenticatable $user, Model $model, string $property): bool;
+    public function viewProperty(?Authenticatable $user, object $model, string $property): bool;
 
     /**
      * Determine whether the user can create models.
