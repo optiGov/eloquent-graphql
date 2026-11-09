@@ -115,7 +115,7 @@ class FieldFactoryCreate extends FieldFactory
             }
 
             $relatedClass = $hasOne[$field]->getType();
-            $relatedModel = $this->service->security()->constrain($relatedClass::query())->find($id);
+            $relatedModel = $this->service->security()->constrainConnectable($relatedClass::query())->find($id);
 
             if ($relatedModel === null) {
                 continue;
@@ -141,7 +141,7 @@ class FieldFactoryCreate extends FieldFactory
 
             if ($relationship instanceof HasMany || $relationship instanceof BelongsToMany) {
                 $relationship->saveMany(
-                    $this->service->security()->constrain($relatedClass::query())->whereKey($ids)->get()
+                    $this->service->security()->constrainConnectable($relatedClass::query())->whereKey($ids)->get()
                 );
             }
         }

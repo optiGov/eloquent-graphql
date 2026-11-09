@@ -120,7 +120,7 @@ class FieldFactoryUpdate extends FieldFactory
             if ($relationship instanceof HasMany) {
                 $this->syncHasMany($entry, $relationship, $relatedClass, $ids);
             } elseif ($relationship instanceof BelongsToMany) {
-                $relationship->sync($this->service->security()->constrain($relatedClass::query())->whereKey($ids)->pluck((new $relatedClass())->getKeyName()));
+                $relationship->sync($this->service->security()->constrainConnectable($relatedClass::query())->whereKey($ids)->pluck((new $relatedClass())->getKeyName()));
             }
         }
     }
@@ -139,7 +139,7 @@ class FieldFactoryUpdate extends FieldFactory
 
         // Attach the current set.
         $relationship->saveMany(
-            $this->service->security()->constrain($relatedClass::query())->whereKey($ids)->get()
+            $this->service->security()->constrainConnectable($relatedClass::query())->whereKey($ids)->get()
         );
     }
 
@@ -180,7 +180,7 @@ class FieldFactoryUpdate extends FieldFactory
     private function connectOneRelation(HasOne|BelongsTo $relationship, string $relatedClass, int $id): void
     {
         if ($relationship instanceof HasOne) {
-            $newModel = $this->service->security()->constrain($relatedClass::query())->find($id);
+            $newModel = $this->service->security()->constrainConnectable($relatedClass::query())->find($id);
 
             if ($newModel === null) {
                 return;
@@ -194,7 +194,7 @@ class FieldFactoryUpdate extends FieldFactory
                 $relationship->save($newModel);
             }
         } elseif ($relationship instanceof BelongsTo) {
-            $newModel = $this->service->security()->constrain($relatedClass::query())->find($id);
+            $newModel = $this->service->security()->constrainConnectable($relatedClass::query())->find($id);
 
             if ($newModel !== null) {
                 $relationship->associate($newModel);
