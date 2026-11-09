@@ -96,6 +96,27 @@ class SecurityGuard
     }
 
     /**
+     * Restricts the query to the models the user can connect to another model. They are not remembered as viewable.
+     *
+     * @template TBuilder of Builder
+     *
+     * @param  TBuilder  $query
+     * @return TBuilder
+     *
+     * @throws BindingResolutionException
+     */
+    public function constrainConnectable(Builder $query): Builder
+    {
+        $policy = app()->make(Gate::class)->getPolicyFor($query->getModel()::class);
+
+        $connectability = $policy instanceof EloquentGraphQLPolicyContract
+            ? $policy->connectability($this->getUser())
+            : Visibility::none();
+
+        return $this->constrain($query, $connectability, rememberViewable: false);
+    }
+
+    /**
      * Restricts the query to the models the user can view and remembers the loaded models as viewable.
      *
      * @template TBuilder of Builder
@@ -105,7 +126,7 @@ class SecurityGuard
      *
      * @throws BindingResolutionException
      */
-    public function constrain(Builder $query, ?Visibility $visibility = null): Builder
+    public function constrain(Builder $query, ?Visibility $visibility = null, bool $rememberViewable = true): Builder
     {
         $visibility ??= $this->getVisibility($query->getModel()::class);
 
@@ -117,6 +138,10 @@ class SecurityGuard
 
         if ($constraint !== null) {
             $constraint($query);
+        }
+
+        if (! $rememberViewable) {
+            return $query;
         }
 
         $userKey = $this->getUserKey($this->getUser());
