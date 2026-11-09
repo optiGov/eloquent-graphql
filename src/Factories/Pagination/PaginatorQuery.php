@@ -3,6 +3,7 @@
 namespace EloquentGraphQL\Factories\Pagination;
 
 use EloquentGraphQL\Exceptions\GraphQLError;
+use EloquentGraphQL\Security\Visibility;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -27,7 +28,7 @@ class PaginatorQuery extends Paginator
 
     private Builder $queryBuilder;
 
-    private bool $isViewableScopeApplied = false;
+    private ?Visibility $visibility = null;
 
     public function __construct(Builder $queryBuilder)
     {
@@ -36,7 +37,9 @@ class PaginatorQuery extends Paginator
 
     public function count(): int
     {
-        $this->applyViewableScope();
+        if ($this->constrain()->isNone()) {
+            return 0;
+        }
 
         return $this->queryBuilder->cloneWithout(['limit', 'offset'])->count();
     }
@@ -60,7 +63,7 @@ class PaginatorQuery extends Paginator
 
     public function getQueryBuilder(): Builder
     {
-        $this->applyViewableScope();
+        $this->constrain();
         $this->applyLimitOffset($this->queryBuilder);
 
         return $this->queryBuilder;
@@ -72,7 +75,10 @@ class PaginatorQuery extends Paginator
             return $this->entries;
         }
 
-        $this->applyViewableScope();
+        if ($this->constrain()->isNone()) {
+            return $this->queryBuilder->getModel()->newCollection();
+        }
+
         $this->applyLimitOffset($this->queryBuilder);
 
         return $this->queryBuilder->get();
@@ -150,7 +156,7 @@ class PaginatorQuery extends Paginator
         $relatedTable = $query->getModel()->{$field}()->getRelated()->getTable();
 
         $query->whereHas($field, function (Builder $q) use ($operators, $relatedTable, $level) {
-            $this->service->security()->applyViewableScope($q->getModel()::class, $q);
+            $this->service->security()->constrain($q);
             $this->applyFilterFieldsOnQuery($operators, $q, $relatedTable, $level + 1);
         });
     }
@@ -223,27 +229,25 @@ class PaginatorQuery extends Paginator
 
             $direction = $this->resolveDirection($innerOrderInput['order']);
 
-            $query->orderByRaw(
-                $this->buildRelationOrderSql($query, $field, $innerField, $direction, $baseModel)
-            );
+            $query->orderBy($this->buildRelationOrderQuery($query, $field, $innerField, $baseModel), $direction);
         }
     }
 
     /**
-     * Builds a correlated subquery that orders by a column on a related table.
-     * The column name is sanitised to prevent SQL injection.
+     * Builds a correlated subquery that selects a column of the related model, restricted to the models the user can
+     * view, so that the order does not reveal anything about hidden models.
      */
-    private function buildRelationOrderSql(Builder $query, string $field, string $innerField, string $direction, ?Model $baseModel): string
+    private function buildRelationOrderQuery(Builder $query, string $field, string $innerField, ?Model $baseModel): Builder
     {
         $model = $baseModel ?? $query->getModel();
         $relation = $model->{$field}();
-        $parentTable = $model->getTable();
-        $foreignTable = $relation->getRelated()->getTable();
-        $parentKey = $relation->getForeignKeyName();
-        $foreignKey = $relation->getParent()->getKeyName();
-        $innerField = '`'.str_replace('`', '', $innerField).'`';
+        $related = $relation->getRelated();
 
-        return "(SELECT $innerField FROM `$foreignTable` WHERE `$foreignTable`.`$foreignKey` = `$parentTable`.`$parentKey` LIMIT 1) $direction";
+        $orderQuery = $relation
+            ->getRelationExistenceQuery($related->newQuery(), $model->newQuery(), [$related->qualifyColumn($innerField)])
+            ->limit(1);
+
+        return $this->service->security()->constrain($orderQuery);
     }
 
     // -----------------------------------------------------------------------
@@ -280,14 +284,14 @@ class PaginatorQuery extends Paginator
      * Restricts the query to the models the user can view. Applied once before the query is executed, so that
      * filters and counts do not consider models the user cannot view.
      */
-    private function applyViewableScope(): void
+    private function constrain(): Visibility
     {
-        if ($this->isViewableScopeApplied) {
-            return;
+        if ($this->visibility === null) {
+            $this->visibility = $this->service->security()->getVisibility($this->className);
+            $this->service->security()->constrain($this->queryBuilder, $this->visibility);
         }
 
-        $this->service->security()->applyViewableScope($this->className, $this->queryBuilder);
-        $this->isViewableScopeApplied = true;
+        return $this->visibility;
     }
 
     /**
