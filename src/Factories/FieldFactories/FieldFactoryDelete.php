@@ -23,7 +23,7 @@ class FieldFactoryDelete extends FieldFactory
     protected function buildResolve(): Closure
     {
         return function ($_, $args) {
-            $model = call_user_func("{$this->model}::find", $args['id']);
+            $model = $this->service->security()->constrain(call_user_func("{$this->model}::query"))->find($args['id']);
 
             // return false if model does not exist
             if (! $model) {

@@ -28,7 +28,7 @@ class FieldFactoryDuplicate extends FieldFactory
     {
         return function ($_, $args) {
             /** @var Model $model */
-            $model = call_user_func("{$this->model}::find", $args['id']);
+            $model = $this->service->security()->constrain(call_user_func("{$this->model}::query"))->find($args['id']);
 
             // return null if model does not exist
             if (! $model) {

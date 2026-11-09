@@ -34,7 +34,7 @@ class FieldFactoryUpdate extends FieldFactory
         $hasMany = $this->service->typeFactory($this->model)->getHasMany();
 
         return function ($_, $args) use ($hasOne, $hasMany) {
-            $entry = call_user_func("{$this->model}::find", $args['id']);
+            $entry = $this->service->security()->constrain(call_user_func("{$this->model}::query"))->find($args['id']);
 
             if (! $entry) {
                 return false;
@@ -120,7 +120,7 @@ class FieldFactoryUpdate extends FieldFactory
             if ($relationship instanceof HasMany) {
                 $this->syncHasMany($entry, $relationship, $relatedClass, $ids);
             } elseif ($relationship instanceof BelongsToMany) {
-                $relationship->sync($ids);
+                $relationship->sync($this->service->security()->constrain($relatedClass::query())->whereKey($ids)->pluck((new $relatedClass())->getKeyName()));
             }
         }
     }
@@ -139,7 +139,7 @@ class FieldFactoryUpdate extends FieldFactory
 
         // Attach the current set.
         $relationship->saveMany(
-            $relatedClass::whereIn('id', $ids)->get()
+            $this->service->security()->constrain($relatedClass::query())->whereKey($ids)->get()
         );
     }
 
@@ -180,7 +180,7 @@ class FieldFactoryUpdate extends FieldFactory
     private function connectOneRelation(HasOne|BelongsTo $relationship, string $relatedClass, int $id): void
     {
         if ($relationship instanceof HasOne) {
-            $newModel = $relatedClass::find($id);
+            $newModel = $this->service->security()->constrain($relatedClass::query())->find($id);
 
             if ($newModel === null) {
                 return;
@@ -194,7 +194,7 @@ class FieldFactoryUpdate extends FieldFactory
                 $relationship->save($newModel);
             }
         } elseif ($relationship instanceof BelongsTo) {
-            $newModel = $relatedClass::find($id);
+            $newModel = $this->service->security()->constrain($relatedClass::query())->find($id);
 
             if ($newModel !== null) {
                 $relationship->associate($newModel);
