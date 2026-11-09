@@ -368,6 +368,16 @@ class VisibilityTest extends TestCase
         $this->assertSame($oeffentlich->id, $this->sichtbar->fresh()->author_id);
     }
 
+    public function test_mutation_connects_connectable_model_without_exposing_it(): void
+    {
+        $verknuepfbar = $this->createAuthor('Verknüpfbar', false);
+
+        $this->execute("mutation { updateBook(id: {$this->sichtbar->id}, book: { name: \"Sichtbar\", author: {$verknuepfbar->id} }) }");
+
+        $this->assertSame($verknuepfbar->id, $this->sichtbar->fresh()->author_id);
+        $this->assertFalse($this->service->security()->canView(Author::query()->find($verknuepfbar->id)));
+    }
+
     private function execute(string $query): array
     {
         $schema = new Schema([

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 /**
- * Authors are viewable when they are visible or named "Öffentlich". Their email must not be filtered or ordered by.
+ * Authors are viewable when they are visible or named "Öffentlich", and also connectable when named "Verknüpfbar". Their email must not be filtered or ordered by.
  * Guests may change authors, so that mutations can be tested without a user.
  */
 class AuthorPolicy implements EloquentGraphQLPolicyContract
@@ -32,6 +32,11 @@ class AuthorPolicy implements EloquentGraphQLPolicyContract
     public function visibility(?Authenticatable $user): Visibility
     {
         return Visibility::where(fn (Builder $query) => $query->where('visible', true)->orWhere('name', 'Öffentlich'));
+    }
+
+    public function connectability(?Authenticatable $user): Visibility
+    {
+        return Visibility::where(fn (Builder $query) => $query->where('visible', true)->orWhereIn('name', ['Öffentlich', 'Verknüpfbar']));
     }
 
     public function viewProperty(?Authenticatable $user, object $model, string $property): bool
