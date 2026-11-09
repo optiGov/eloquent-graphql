@@ -8,9 +8,13 @@ use EloquentGraphQL\Language\Vocabulary;
 use EloquentGraphQL\Reflection\ReflectionProperty;
 use EloquentGraphQL\Services\EloquentGraphQLService;
 use Illuminate\Contracts\Auth\Access\Gate;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use LogicException;
+use WeakMap;
 
 class SecurityGuard
 {
@@ -18,10 +22,16 @@ class SecurityGuard
 
     private Vocabulary $vocab;
 
+    /**
+     * @var WeakMap<object, array<string, bool>>
+     */
+    private WeakMap $viewableEntries;
+
     public function __construct(EloquentGraphQLService $service, Vocabulary $vocab)
     {
         $this->service = $service;
         $this->vocab = $vocab;
+        $this->viewableEntries = new WeakMap();
     }
 
     public function setVocab(Vocabulary $vocab): static
@@ -76,21 +86,73 @@ class SecurityGuard
     }
 
     /**
-     * Restricts the query to the models the user can view, so that filters and counts only consider those.
+     * Determines which models of the given class the user can view. Classes without a policy are not viewable.
      *
      * @throws BindingResolutionException
      */
-    public function applyViewableScope(string $className, Builder $query): void
+    public function getVisibility(string $className): Visibility
     {
         $policy = app()->make(Gate::class)->getPolicyFor($className);
 
         if (! $policy instanceof EloquentGraphQLPolicyContract) {
-            return;
+            return Visibility::none();
         }
 
-        $user = auth()->guard('api')->user();
+        return $policy->visibility($this->getUser());
+    }
 
-        $query->where(fn (Builder $query) => $policy->scopeViewable($user, $query));
+    /**
+     * Restricts the query to the models the user can view and remembers the loaded models as viewable.
+     *
+     * @template TBuilder of Builder
+     *
+     * @param  TBuilder  $query
+     * @return TBuilder
+     *
+     * @throws BindingResolutionException
+     */
+    public function constrain(Builder $query, ?Visibility $visibility = null): Builder
+    {
+        $visibility ??= $this->getVisibility($query->getModel()::class);
+
+        if ($visibility->isNone()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $constraint = $visibility->getConstraint();
+
+        if ($constraint !== null) {
+            $constraint($query);
+        }
+
+        $userKey = $this->getUserKey();
+
+        return $query->afterQuery(function (iterable $results) use ($userKey) {
+            foreach ($results as $result) {
+                if ($result instanceof Model) {
+                    $this->rememberCanView($result, $userKey, true);
+                }
+            }
+        });
+    }
+
+    /**
+     * Determines whether the user can view the model. Models loaded through constrain() are known to be viewable,
+     * all others are checked against the visibility once.
+     *
+     * @throws BindingResolutionException
+     */
+    public function canView(object $model): bool
+    {
+        $userKey = $this->getUserKey();
+        $canView = $this->viewableEntries[$model][$userKey] ?? null;
+
+        if ($canView === null) {
+            $canView = $this->determineCanView($model);
+            $this->rememberCanView($model, $userKey, $canView);
+        }
+
+        return $canView;
     }
 
     /**
@@ -101,8 +163,54 @@ class SecurityGuard
     public function filterViewable(Collection|iterable $models): Collection
     {
         return collect($models)
-            ->filter(fn (object $model) => $this->check('view', $model::class, [$model]))
+            ->filter(fn (object $model) => $this->canView($model))
             ->values();
+    }
+
+    /**
+     * @throws BindingResolutionException
+     */
+    private function determineCanView(object $model): bool
+    {
+        if ($model instanceof Model && $model->wasRecentlyCreated) {
+            return true;
+        }
+
+        $visibility = $this->getVisibility($model::class);
+
+        if ($visibility->isAll() || $visibility->isNone()) {
+            return $visibility->isAll();
+        }
+
+        if (! $model instanceof Model) {
+            throw new LogicException('The visibility of ['.$model::class.'] must be all() or none(), as it is no Eloquent model.');
+        }
+
+        $constraint = $visibility->getConstraint();
+
+        return $model->newQueryWithoutScopes()
+            ->whereKey($model->getKey())
+            ->where($constraint)
+            ->exists();
+    }
+
+    private function rememberCanView(object $model, string $userKey, bool $canView): void
+    {
+        $entries = $this->viewableEntries[$model] ?? [];
+        $entries[$userKey] = $canView;
+        $this->viewableEntries[$model] = $entries;
+    }
+
+    private function getUser(): ?Authenticatable
+    {
+        return auth()->guard('api')->user();
+    }
+
+    private function getUserKey(): string
+    {
+        $user = $this->getUser();
+
+        return $user === null ? 'guest' : $user::class.':'.$user->getAuthIdentifier();
     }
 
     /**
@@ -155,6 +263,8 @@ class SecurityGuard
      */
     public function assertCanViewProperty(object $model, ReflectionProperty $property): void
     {
+        $this->assertCanView($model);
+
         if (! $this->check('viewProperty', $model::class, [$model, $property->getName()])) {
             throw new GraphQLError($this->vocab->errorUnauthorizedViewProperty());
         }
@@ -166,7 +276,7 @@ class SecurityGuard
      */
     public function assertCanView(object $model): void
     {
-        if (! $this->check('view', $model::class, [$model])) {
+        if (! $this->canView($model)) {
             throw new GraphQLError($this->vocab->errorUnauthorizedView());
         }
     }
@@ -180,18 +290,5 @@ class SecurityGuard
         if (! $this->check('viewAny', $className)) {
             throw new GraphQLError($this->vocab->errorUnauthorizedViewAny());
         }
-    }
-
-    /**
-     * @throws BindingResolutionException
-     * @throws GraphQLError
-     */
-    public function assertCanViewAll(Collection|iterable $models): Collection
-    {
-        if (is_iterable($models)) {
-            $models = collect($models);
-        }
-
-        return $models->each(fn (object $model) => $this->assertCanView($model));
     }
 }
