@@ -4,7 +4,7 @@ namespace EloquentGraphQL\Contracts;
 
 use EloquentGraphQL\Security\Visibility;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable;
 
 interface EloquentGraphQLPolicyContract
 {
