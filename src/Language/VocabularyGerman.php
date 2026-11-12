@@ -175,6 +175,11 @@ class VocabularyGerman implements Vocabulary
         return 'Sie sind nicht berechtigt, die Eigenschaft ['.$property.'] zu filtern.';
     }
 
+    public function errorUnauthorizedOrderProperty(string $property): string
+    {
+        return 'Sie sind nicht berechtigt, nach der Eigenschaft ['.$property.'] zu sortieren.';
+    }
+
     public function errorUnauthorizedCreate(): string
     {
         return 'Sie sind nicht berechtigt, diesen Eintrag zu erstellen.';

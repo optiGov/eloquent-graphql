@@ -26,13 +26,9 @@ class TypeFieldFactoryHasOne extends TypeFieldFactory
                 // get entry
                 $entry = $parent->{$this->fieldName};
 
-                // return null if entry does not exist
-                if (! $entry) {
+                if (! $entry || ! $this->service->security()->canView($entry)) {
                     return null;
                 }
-
-                // authorize entry
-                $this->service->security()->assertCanView($entry);
 
                 return $entry;
             },

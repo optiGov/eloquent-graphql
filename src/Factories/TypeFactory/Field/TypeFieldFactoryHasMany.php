@@ -56,7 +56,7 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                     $paginator = new PaginatorQuery($builderOrIterable);
                 } else {
                     $paginator = new PaginatorIterable();
-                    $paginator->setEntries($builderOrIterable);
+                    $paginator->setEntries($this->service->security()->filterViewable($builderOrIterable));
                 }
 
                 // set limit and offset
@@ -72,13 +72,12 @@ class TypeFieldFactoryHasMany extends TypeFieldFactory
                 if ($this->property->hasPagination()) {
                     $relationEagerLoaded = $parent->relationLoaded($this->fieldName);
                     if ($relationEagerLoaded) {
-                        $eagerLoadedEntries = $parent->{$this->fieldName};
-                        $paginator->setEntries($eagerLoadedEntries);
+                        $paginator->setEntries($this->service->security()->filterViewable($parent->{$this->fieldName}));
                     }
 
                     return $paginator;
                 } else {
-                    return $this->service->security()->assertCanViewAll($paginator->get());
+                    return $paginator->get();
                 }
             },
         ];

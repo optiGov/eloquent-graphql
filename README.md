@@ -109,6 +109,48 @@ class Author {
 }
 ```
 
+### Authorization
+
+Every model needs a Laravel policy implementing `EloquentGraphQLPolicyContract`. Models without such a policy are not
+viewable. Besides the usual abilities, `visibility()` defines which models the user can view:
+
+```php
+class AuthorPolicy implements EloquentGraphQLPolicyContract
+{
+    public function visibility(?Authenticatable $user): Visibility
+    {
+        if ($user !== null) {
+            return Visibility::all();
+        }
+
+        return Visibility::where(fn (Builder $query) => $query->where($query->qualifyColumn('visible'), true));
+    }
+
+    // ...
+}
+```
+
+`Visibility::all()`, `Visibility::none()` and `Visibility::allIf(bool)` need no database query. Non-Eloquent types may
+only use those.
+
+- Every query of the package (lists, counts, single entries, relations, filters and orders on relations, and the models
+  looked up by mutations) is restricted with `security()->constrain()`. Hidden models are neither returned nor counted,
+  and a hidden single entry or has-one relation resolves to `null`.
+- Every field of a model checks `security()->canView()` first. Models loaded through `constrain()` are known to be
+  viewable, so this costs no query. Any other model, e.g. one returned by a custom resolver, is checked once against the
+  visibility. Models created within the request are viewable. `security()->canViewAs($model, $user)` checks a model for
+  another user, e.g. in a policy's `view()`.
+- Models connected by mutations are restricted with `connectability()`, which is usually `visibility()`. It may allow
+  more, e.g. freshly uploaded files that nobody can view yet. Connectable models are not remembered as viewable.
+- Ordering by a property requires the same permission as filtering by it (`filterProperty()`).
+
+Custom resolvers that act on a model should check it before doing so, or load it through `constrain()`:
+
+```php
+$book = Book::findOrFail($args['id']);
+$graphQLService->security()->assertCanView($book);
+```
+
 ### Custom Fields
 
 You can add custom fields to your GraphQL types using the `field()` method.

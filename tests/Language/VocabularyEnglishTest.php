@@ -171,6 +171,11 @@ class VocabularyEnglishTest extends TestCase
         $this->assertSame('You are not authorized to duplicate this model.', $this->vocab->errorUnauthorizedDuplicate());
     }
 
+    public function testUnauthorizedOrderPropertyError(): void
+    {
+        $this->assertSame('You are not authorized to order by the property [email].', $this->vocab->errorUnauthorizedOrderProperty('email'));
+    }
+
     public function testAllVerbWithCommonModels(): void
     {
         $this->assertSame('allBooks',    $this->vocab->all('Book'));

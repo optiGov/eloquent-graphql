@@ -39,17 +39,9 @@ class FieldFactoryView extends FieldFactory
                 ->buildRelationConstraints();
 
             // apply eager loading constraints to query and get entry
-            $entry = call_user_func("{$this->model}::with", $eagerLoadingConstraints)->find($args['id']);
+            $query = call_user_func("{$this->model}::with", $eagerLoadingConstraints);
 
-            // return null if entry does not exist
-            if (! $entry) {
-                return null;
-            }
-
-            // authorize
-            $this->service->security()->assertCanView($entry);
-
-            return $entry;
+            return $this->service->security()->constrain($query)->find($args['id']);
         };
     }
 
