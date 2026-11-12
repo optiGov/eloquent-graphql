@@ -6,7 +6,7 @@ use EloquentGraphQL\Contracts\EloquentGraphQLPolicyContract;
 use EloquentGraphQL\Security\Visibility;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable;
 
 /**
  * Authors are viewable when they are visible or named "Öffentlich", and also connectable when named "Verknüpfbar". Their email must not be filtered or ordered by.

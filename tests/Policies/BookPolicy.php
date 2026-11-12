@@ -5,7 +5,7 @@ namespace EloquentGraphQL\Tests\Policies;
 use EloquentGraphQL\Contracts\EloquentGraphQLPolicyContract;
 use EloquentGraphQL\Security\Visibility;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable;
 
 /**
  * Books are always viewable, and guests may change them, so that mutations can be tested without a user.
