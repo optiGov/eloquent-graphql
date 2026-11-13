@@ -6,6 +6,7 @@ use EloquentGraphQL\Exceptions\GraphQLError;
 use EloquentGraphQL\Factories\Pagination\PaginatorQuery;
 use EloquentGraphQL\Security\Visibility;
 use EloquentGraphQL\Services\EloquentGraphQLService;
+use EloquentGraphQL\Tests\Models\Anthology;
 use EloquentGraphQL\Tests\Models\Author;
 use EloquentGraphQL\Tests\Models\Book;
 use EloquentGraphQL\Tests\Models\Reader;
@@ -32,7 +33,7 @@ use stdClass;
 
 /**
  * Tests that guests only get to see, count, filter, order and change the models they can view, using an in-memory
- * database. Authors are partially visible, books are visible, readers have no policy.
+ * database. Authors are partially visible, books and anthologies are visible, readers have no policy.
  */
 class VisibilityTest extends TestCase
 {
@@ -56,6 +57,7 @@ class VisibilityTest extends TestCase
         $gate = new Gate($container, fn () => null);
         $gate->policy(Author::class, AuthorPolicy::class);
         $gate->policy(Book::class, BookPolicy::class);
+        $gate->policy(Anthology::class, BookPolicy::class);
         $gate->policy(stdClass::class, AuthorPolicy::class);
         $container->instance(GateContract::class, $gate);
         $container->instance(AuthFactory::class, new class implements AuthFactory
@@ -81,7 +83,19 @@ class VisibilityTest extends TestCase
             $table->string('name');
             $table->string('email');
             $table->boolean('visible');
+            $table->foreignId('anthology_id')->nullable();
+            $table->foreignId('chief_of_anthology_id')->nullable();
             $table->timestamps();
+        });
+        $capsule->schema()->create('anthologies', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->foreignId('editor_id')->nullable();
+            $table->timestamps();
+        });
+        $capsule->schema()->create('anthology_author', function (Blueprint $table) {
+            $table->foreignId('anthology_id');
+            $table->foreignId('author_id');
         });
         $capsule->schema()->create('books', function (Blueprint $table) {
             $table->id();
@@ -361,11 +375,94 @@ class VisibilityTest extends TestCase
     {
         $oeffentlich = Author::query()->where('name', 'Öffentlich')->first();
 
-        $this->execute("mutation { updateBook(id: {$this->sichtbar->id}, book: { name: \"Sichtbar\", author: {$this->bert->id} }) }");
+        $hiddenResult = $this->execute("mutation { updateBook(id: {$this->sichtbar->id}, book: { name: \"Sichtbar\", author: {$this->bert->id} }) }");
+        $this->assertSame('You are not authorized to update this model.', $hiddenResult['errors'][0]['message']);
         $this->assertSame($this->anna->id, $this->sichtbar->fresh()->author_id);
 
         $this->execute("mutation { updateBook(id: {$this->sichtbar->id}, book: { name: \"Sichtbar\", author: {$oeffentlich->id} }) }");
         $this->assertSame($oeffentlich->id, $this->sichtbar->fresh()->author_id);
+    }
+
+    public function test_update_aborts_when_belongs_to_many_would_remove_hidden_model(): void
+    {
+        $anthology = $this->createAnthology();
+        $anthology->authors()->attach([$this->anna->id, $this->bert->id]);
+
+        $result = $this->updateAnthology($anthology, "name: \"Geändert\", authors: [{$this->anna->id}]");
+
+        $this->assertSame('You are not authorized to update this model.', $result['errors'][0]['message']);
+        $this->assertEqualsCanonicalizing([$this->anna->id, $this->bert->id], $anthology->authors()->pluck('authors.id')->all());
+        $this->assertSame('Sammelband', $anthology->fresh()->name);
+    }
+
+    public function test_update_keeps_unchanged_hidden_model_of_belongs_to_many(): void
+    {
+        $anthology = $this->createAnthology();
+        $anthology->authors()->attach([$this->anna->id, $this->bert->id]);
+        $verknuepfbar = $this->createAuthor('Verknüpfbar', false);
+
+        $result = $this->updateAnthology($anthology, "name: \"Sammelband\", authors: [{$this->anna->id}, {$this->bert->id}, {$verknuepfbar->id}]");
+
+        $this->assertArrayNotHasKey('errors', $result);
+        $this->assertEqualsCanonicalizing([$this->anna->id, $this->bert->id, $verknuepfbar->id], $anthology->authors()->pluck('authors.id')->all());
+    }
+
+    public function test_update_aborts_when_belongs_to_many_would_connect_hidden_or_missing_model(): void
+    {
+        $anthology = $this->createAnthology();
+
+        $hiddenResult = $this->updateAnthology($anthology, "name: \"Sammelband\", authors: [{$this->bert->id}]");
+        $missingResult = $this->updateAnthology($anthology, 'name: "Sammelband", authors: [999999]');
+
+        $this->assertSame('You are not authorized to update this model.', $hiddenResult['errors'][0]['message']);
+        $this->assertSame('You are not authorized to update this model.', $missingResult['errors'][0]['message']);
+        $this->assertSame(0, $anthology->authors()->count());
+    }
+
+    public function test_update_aborts_when_has_many_would_remove_hidden_model(): void
+    {
+        $anthology = $this->createAnthology();
+        $anthology->members()->saveMany([$this->anna, $this->bert]);
+
+        $result = $this->updateAnthology($anthology, "name: \"Sammelband\", members: [{$this->anna->id}]");
+
+        $this->assertSame('You are not authorized to update this model.', $result['errors'][0]['message']);
+        $this->assertSame($anthology->id, $this->bert->fresh()->anthology_id);
+    }
+
+    public function test_update_removes_visible_model_of_has_many(): void
+    {
+        $anthology = $this->createAnthology();
+        $anthology->members()->saveMany([$this->anna, $this->bert]);
+
+        $result = $this->updateAnthology($anthology, "name: \"Sammelband\", members: [{$this->bert->id}]");
+
+        $this->assertArrayNotHasKey('errors', $result);
+        $this->assertNull($this->anna->fresh()->anthology_id);
+        $this->assertSame($anthology->id, $this->bert->fresh()->anthology_id);
+    }
+
+    public function test_update_aborts_when_belongs_to_would_remove_or_replace_hidden_model(): void
+    {
+        $anthology = $this->createAnthology(editor: $this->bert);
+
+        $removeResult = $this->updateAnthology($anthology, 'name: "Sammelband", editor: null');
+        $replaceResult = $this->updateAnthology($anthology, "name: \"Sammelband\", editor: {$this->anna->id}");
+
+        $this->assertSame('You are not authorized to update this model.', $removeResult['errors'][0]['message']);
+        $this->assertSame('You are not authorized to update this model.', $replaceResult['errors'][0]['message']);
+        $this->assertSame($this->bert->id, $anthology->fresh()->editor_id);
+    }
+
+    public function test_update_aborts_when_has_one_would_remove_hidden_model(): void
+    {
+        $anthology = $this->createAnthology();
+        $anthology->chief()->save($this->bert);
+
+        $result = $this->updateAnthology($anthology, 'name: "Sammelband", chief: null');
+
+        $this->assertSame('You are not authorized to update this model.', $result['errors'][0]['message']);
+        $this->assertSame($anthology->id, $this->bert->fresh()->chief_of_anthology_id);
     }
 
     public function test_mutation_connects_connectable_model_without_exposing_it(): void
@@ -376,6 +473,61 @@ class VisibilityTest extends TestCase
 
         $this->assertSame($verknuepfbar->id, $this->sichtbar->fresh()->author_id);
         $this->assertFalse($this->service->security()->canView(Author::query()->find($verknuepfbar->id)));
+    }
+
+    public function test_create_aborts_when_belongs_to_is_not_connectable(): void
+    {
+        $result = Book::unguarded(fn () => $this->execute("mutation { createBook(book: { name: \"Neu\", author: {$this->bert->id} }) { id } }"));
+
+        $this->assertSame('You are not authorized to create this model.', $result['errors'][0]['message']);
+        $this->assertFalse(Book::query()->where('name', 'Neu')->exists());
+    }
+
+    public function test_create_aborts_for_missing_belongs_to_with_the_same_error(): void
+    {
+        $result = Book::unguarded(fn () => $this->execute('mutation { createBook(book: { name: "Neu", author: 999999 }) { id } }'));
+
+        $this->assertSame('You are not authorized to create this model.', $result['errors'][0]['message']);
+        $this->assertFalse(Book::query()->where('name', 'Neu')->exists());
+    }
+
+    public function test_create_aborts_when_many_relation_is_not_connectable(): void
+    {
+        $belongsToManyResult = Anthology::unguarded(fn () => $this->execute("mutation { createAnthology(anthology: { name: \"Neu\", authors: [{$this->anna->id}, {$this->bert->id}] }) { id } }"));
+        $hasManyResult = Anthology::unguarded(fn () => $this->execute("mutation { createAnthology(anthology: { name: \"Neu\", members: [{$this->bert->id}] }) { id } }"));
+
+        $this->assertSame('You are not authorized to create this model.', $belongsToManyResult['errors'][0]['message']);
+        $this->assertSame('You are not authorized to create this model.', $hasManyResult['errors'][0]['message']);
+        $this->assertFalse(Anthology::query()->where('name', 'Neu')->exists());
+        $this->assertNull($this->bert->fresh()->anthology_id);
+    }
+
+    public function test_create_aborts_when_has_one_is_not_connectable(): void
+    {
+        $result = Anthology::unguarded(fn () => $this->execute("mutation { createAnthology(anthology: { name: \"Neu\", chief: {$this->bert->id} }) { id } }"));
+
+        $this->assertSame('You are not authorized to create this model.', $result['errors'][0]['message']);
+        $this->assertFalse(Anthology::query()->where('name', 'Neu')->exists());
+    }
+
+    public function test_create_connects_connectable_many_relation(): void
+    {
+        $verknuepfbar = $this->createAuthor('Verknüpfbar', false);
+
+        $result = Anthology::unguarded(fn () => $this->execute("mutation { createAnthology(anthology: { name: \"Neu\", authors: [{$this->anna->id}, {$verknuepfbar->id}] }) { id } }"));
+
+        $this->assertArrayNotHasKey('errors', $result);
+        $this->assertEqualsCanonicalizing([$this->anna->id, $verknuepfbar->id], Anthology::query()->where('name', 'Neu')->first()->authors()->pluck('authors.id')->all());
+    }
+
+    public function test_create_connects_connectable_belongs_to(): void
+    {
+        $verknuepfbar = $this->createAuthor('Verknüpfbar', false);
+
+        $result = Book::unguarded(fn () => $this->execute("mutation { createBook(book: { name: \"Neu\", author: {$verknuepfbar->id} }) { id } }"));
+
+        $this->assertArrayNotHasKey('errors', $result);
+        $this->assertSame($verknuepfbar->id, Book::query()->where('name', 'Neu')->value('author_id'));
     }
 
     private function execute(string $query): array
@@ -393,7 +545,10 @@ class VisibilityTest extends TestCase
                 ->build(),
             'mutation' => $this->service->mutation()
                 ->delete(Author::class)
+                ->create(Book::class)
+                ->create(Anthology::class)
                 ->update(Book::class)
+                ->update(Anthology::class)
                 ->build(),
         ]);
 
@@ -431,5 +586,18 @@ class VisibilityTest extends TestCase
         $book->forceFill(['name' => $name, 'author_id' => $author->id])->save();
 
         return $book;
+    }
+
+    private function createAnthology(?Author $editor = null): Anthology
+    {
+        $anthology = new Anthology();
+        $anthology->forceFill(['name' => 'Sammelband', 'editor_id' => $editor?->id])->save();
+
+        return $anthology;
+    }
+
+    private function updateAnthology(Anthology $anthology, string $input): array
+    {
+        return $this->execute("mutation { updateAnthology(id: {$anthology->id}, anthology: { $input }) }");
     }
 }

@@ -6,6 +6,7 @@ use Closure;
 use EloquentGraphQL\Events\GraphQLCreatedModel;
 use EloquentGraphQL\Events\GraphQLCreatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -43,14 +44,25 @@ class FieldFactoryCreate extends FieldFactory
                 $args[$this->pureName], $entry, $hasMany, $hasOne
             );
 
+            foreach ($hasOneRelations as $field => $id) {
+                $this->assertCanConnect($hasOne[$field]->getType(), [$id]);
+            }
+
+            foreach ($manyRelations as $field => $ids) {
+                $this->assertCanConnect($hasMany[$field]->getType(), $ids ?? []);
+            }
+
             $entry->fill(array_filter($scalarFields, fn ($value) => $value !== null));
 
             GraphQLCreatingModel::dispatch($entry);
-            $entry->save();
-            $entry->refresh();
 
-            $this->attachHasOneRelations($entry, $hasOneRelations, $hasOne);
-            $this->attachManyRelations($entry, $manyRelations, $hasMany);
+            $entry->getConnection()->transaction(function () use ($entry, $hasOneRelations, $manyRelations, $hasOne, $hasMany) {
+                $entry->save();
+                $entry->refresh();
+
+                $this->attachHasOneRelations($entry, $hasOneRelations, $hasOne);
+                $this->attachManyRelations($entry, $manyRelations, $hasMany);
+            });
 
             GraphQLCreatedModel::dispatch($entry);
 
@@ -66,8 +78,12 @@ class FieldFactoryCreate extends FieldFactory
      *
      * BelongsTo relations are resolved here immediately: the FK is written
      * directly into $scalarFields so that it is persisted with the model itself.
+     * As this happens before anything is saved, a model that may not be connected
+     * aborts the whole creation, just like for the other relations.
      *
      * @return array{0: array, 1: array, 2: array}
+     *
+     * @throws GraphQLError
      */
     private function separateRelations(array $input, Model $entry, Collection $hasMany, Collection $hasOne): array
     {
@@ -93,7 +109,8 @@ class FieldFactoryCreate extends FieldFactory
                 // FK lives on the related model — must be saved after the entry exists.
                 $hasOneRelations[$field] = $scalarFields[$field];
             } else {
-                // BelongsTo: FK lives on this model — inline it into scalar fields now.
+                // BelongsTo: FK lives on this model — inline it into scalar fields now, but only if it may be connected.
+                $this->assertCanConnect($hasOne[$field]->getType(), [$scalarFields[$field]]);
                 $scalarFields[$relationship->getForeignKeyName()] = $scalarFields[$field];
             }
 
@@ -104,8 +121,25 @@ class FieldFactoryCreate extends FieldFactory
     }
 
     /**
+     * A missing model throws the same error as one that is not connectable, so that it does not reveal its existence.
+     *
+     * @throws GraphQLError
+     */
+    private function assertCanConnect(string $relatedClass, array $ids): void
+    {
+        $ids = array_values(array_unique(array_filter($ids, fn ($id) => $id !== null)));
+
+        $canConnect = $ids === []
+            || $this->service->security()->constrainConnectable($relatedClass::query())->whereKey($ids)->count() === count($ids);
+
+        if (! $canConnect) {
+            throw new GraphQLError($this->service->getVocab()->errorUnauthorizedCreate());
+        }
+    }
+
+    /**
      * Saves each deferred has-one relation onto the newly created entry.
-     * Skips null IDs and IDs that resolve to a non-existent model.
+     * Skips null IDs, the others were checked by assertCanConnect().
      */
     private function attachHasOneRelations(Model $entry, array $hasOneRelations, Collection $hasOne): void
     {

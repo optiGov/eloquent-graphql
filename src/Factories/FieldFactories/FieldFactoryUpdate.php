@@ -6,6 +6,7 @@ use Closure;
 use EloquentGraphQL\Events\GraphQLUpdatedModel;
 use EloquentGraphQL\Events\GraphQLUpdatingModel;
 use EloquentGraphQL\Exceptions\EloquentGraphQLException;
+use EloquentGraphQL\Exceptions\GraphQLError;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,19 +44,23 @@ class FieldFactoryUpdate extends FieldFactory
             $input = $args[$this->pureName];
 
             $this->service->security()->assertCanUpdate($entry, $input);
-            GraphQLUpdatingModel::dispatch($entry);
 
             [$manyRelations, $oneRelations, $scalarFields] = $this->separateRelations($input, $hasMany, $hasOne);
+            $this->assertCanChangeRelations($entry, $manyRelations, $oneRelations, $hasMany, $hasOne);
 
-            $this->applyScalarFields($entry, $scalarFields);
-            $this->syncManyRelations($entry, $manyRelations, $hasMany);
-            $this->syncOneRelations($entry, $oneRelations, $hasOne);
+            GraphQLUpdatingModel::dispatch($entry);
 
-            if ($entry->timestamps) {
-                $entry->updateTimestamps();
-            }
+            $success = $entry->getConnection()->transaction(function () use ($entry, $scalarFields, $manyRelations, $oneRelations, $hasMany, $hasOne) {
+                $this->applyScalarFields($entry, $scalarFields);
+                $this->syncManyRelations($entry, $manyRelations, $hasMany);
+                $this->syncOneRelations($entry, $oneRelations, $hasOne);
 
-            $success = $entry->update();
+                if ($entry->timestamps) {
+                    $entry->updateTimestamps();
+                }
+
+                return $entry->update();
+            });
 
             if ($success) {
                 GraphQLUpdatedModel::dispatch($entry);
@@ -95,6 +100,61 @@ class FieldFactoryUpdate extends FieldFactory
     }
 
     /**
+     * Ensures that the update neither connects models that may not be connected nor removes or replaces models the
+     * user cannot view, as clients only know the models they can view and would otherwise remove the others silently.
+     * Unchanged relations are not checked, so that a connected model which is not connectable can be kept.
+     *
+     * @throws GraphQLError
+     */
+    private function assertCanChangeRelations(Model $entry, array $manyRelations, array $oneRelations, Collection $hasMany, Collection $hasOne): void
+    {
+        foreach ($manyRelations as $field => $ids) {
+            $relationship = $entry->{$field}();
+
+            if ($ids === null || (! $relationship instanceof HasMany && ! $relationship instanceof BelongsToMany)) {
+                continue;
+            }
+
+            $connectedKeys = $relationship->pluck($relationship->getRelated()->getQualifiedKeyName())->all();
+            $this->assertCanChangeKeys($hasMany[$field]->getType(), $connectedKeys, $ids);
+        }
+
+        foreach ($oneRelations as $field => $id) {
+            $relationship = $entry->{$field}();
+
+            $connectedKey = $relationship instanceof BelongsTo
+                ? $entry->getAttribute($relationship->getForeignKeyName())
+                : $relationship->value($relationship->getRelated()->getQualifiedKeyName());
+
+            $this->assertCanChangeKeys($hasOne[$field]->getType(), array_filter([$connectedKey], fn ($key) => $key !== null), array_filter([$id], fn ($key) => $key !== null));
+        }
+    }
+
+    /**
+     * A missing model throws the same error as one that is not connectable, so that it does not reveal its existence.
+     *
+     * @throws GraphQLError
+     */
+    private function assertCanChangeKeys(string $relatedClass, array $connectedKeys, array $newKeys): void
+    {
+        $connectedKeys = array_map('strval', $connectedKeys);
+        $newKeys = array_map('strval', $newKeys);
+
+        $addedKeys = array_values(array_unique(array_diff($newKeys, $connectedKeys)));
+        $removedKeys = array_values(array_unique(array_diff($connectedKeys, $newKeys)));
+
+        $canConnectAddedModels = $addedKeys === []
+            || $this->service->security()->constrainConnectable($relatedClass::query())->whereKey($addedKeys)->count() === count($addedKeys);
+
+        $canViewRemovedModels = $removedKeys === []
+            || $this->service->security()->constrain($relatedClass::query(), rememberViewable: false)->whereKey($removedKeys)->count() === count($removedKeys);
+
+        if (! $canConnectAddedModels || ! $canViewRemovedModels) {
+            throw new GraphQLError($this->service->getVocab()->errorUnauthorizedUpdate());
+        }
+    }
+
+    /**
      * Assigns scalar field values directly onto the model.
      */
     private function applyScalarFields(Model $entry, array $scalarFields): void
@@ -120,7 +180,8 @@ class FieldFactoryUpdate extends FieldFactory
             if ($relationship instanceof HasMany) {
                 $this->syncHasMany($entry, $relationship, $relatedClass, $ids);
             } elseif ($relationship instanceof BelongsToMany) {
-                $relationship->sync($this->service->security()->constrainConnectable($relatedClass::query())->whereKey($ids)->pluck((new $relatedClass())->getKeyName()));
+                // the ids were checked by assertCanChangeRelations(), and unchanged ones must be kept even if not connectable
+                $relationship->sync($ids);
             }
         }
     }
