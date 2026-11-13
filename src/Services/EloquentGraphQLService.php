@@ -55,6 +55,11 @@ class EloquentGraphQLService
         return $this;
     }
 
+    public function getVocab(): Vocabulary
+    {
+        return $this->vocab;
+    }
+
     /**
      * Creates a new root query object.
      */
