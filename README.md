@@ -142,6 +142,8 @@ only use those.
   another user, e.g. in a policy's `view()`.
 - Models connected by mutations are restricted with `connectability()`, which is usually `visibility()`. It may allow
   more, e.g. freshly uploaded files that nobody can view yet. Connectable models are not remembered as viewable.
+  A mutation fails as a whole if it would connect a model that is not connectable, or remove or replace one the user
+  cannot view. Unchanged relations are kept as they are.
 - Ordering by a property requires the same permission as filtering by it (`filterProperty()`).
 
 Custom resolvers that act on a model should check it before doing so, or load it through `constrain()`:
